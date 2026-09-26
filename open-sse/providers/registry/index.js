@@ -4,6 +4,7 @@ import p1 from "./alicode.js";
 import p2 from "./anthropic.js";
 import p3 from "./antigravity.js";
 import p4 from "./assemblyai.js";
+import p374 from "./atria.js";
 import p5 from "./aws-polly.js";
 import p6 from "./azure.js";
 import p7 from "./black-forest-labs.js";
@@ -302,6 +303,7 @@ import p298 from "./tabitoken.js";
 import p299 from "./tencent-aistudio-web.js";
 import p300 from "./tinycms-web.js";
 import p301 from "./token-kiosk.js";
+import p375 from "./tokenharbor.js";
 import p302 from "./tokenreply.js";
 import p303 from "./triton.js";
 import p304 from "./typhoon.js";
@@ -380,6 +382,7 @@ export default [
   p2,
   p3,
   p4,
+  p374,
   p5,
   p6,
   p7,
@@ -676,6 +679,7 @@ export default [
   p299,
   p300,
   p301,
+  p375,
   p302,
   p303,
   p304,

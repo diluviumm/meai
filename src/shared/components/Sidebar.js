@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/shared/utils/cn";
 import { APP_CONFIG } from "@/shared/constants/config";
+import useSettingsStore from "@/store/settingsStore"; // dipakai fetchSettings di region auto-merge (ronde-36)
 import Button from "./Button";
 import Modal from "./Modal";
 
@@ -68,13 +69,13 @@ export default function Sidebar({ onClose }) {
   const forkBusy = typeof forkState === "string" && /^(queued|apply|build|restart)/.test(forkState);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then(res => res.json())
-      .then(data => { if (data.enableTranslator) setEnableTranslator(true); })
-      .catch(() => {});
+    useSettingsStore.getState().fetchSettings().then((data) => {
+      if (data?.enableTranslator) setEnableTranslator(true);
+    });
   }, []);
 
   // Fork update (ronde-26): auto-check upstream saat mount + poll fase proses (web-based, tanpa cron)
+  // Banner "versi npm baru" upstream TIDAK diadopsi — updater fork sengaja dimatikan (H2, PLAN-FITUR).
   useEffect(() => {
     let alive = true;
     const toCheck = (d) => ({ behind: d.behind, commits: d.commits || [], dirtyFiles: d.dirtyFiles || 0, logTail: d.logTail || "", error: d.error || null });
