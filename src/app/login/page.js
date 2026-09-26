@@ -138,7 +138,13 @@ export default function LoginPage() {
         window.location.assign("/dashboard");
       } else {
         const data = await res.json();
-        setError(data.error || "Invalid password");
+        // Honeypot kena isi oleh password manager/autofill browser → pesan jelas,
+        // bukan "Invalid request" yang membingungkan (insiden ronde-34).
+        const msg =
+          data.error === "Invalid request" && !data.retryAfter && !data.resetHint
+            ? "The form was auto-filled by your browser. Reload the page and type your password manually."
+            : data.error || "Invalid password";
+        setError(msg);
         if (data.resetHint) setResetHint(data.resetHint);
         if (data.retryAfter) setRetryAfter(Number(data.retryAfter));
       }
@@ -256,19 +262,28 @@ export default function LoginPage() {
 
             {ssoAvailable && passwordAvailable && <div className="h-px bg-border/60" />}
 
+            {/* Honeypot anti-bot — HARUS DI LUAR <form>:
+                password manager (Brave native PM) mengisi input teks PERTAMA
+                dalam form sebagai "username" (form ini tak punya username) →
+                login manusia pernah ditolak 4x sebagai bot (ronde-34).
+                Nama non-semantik + atribut anti-PM: mesin autofill tak cocok. */}
+            <input
+              type="text"
+              name="kolom_verifikasi_9f3"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
+              data-form-type="other"
+              aria-hidden="true"
+              className="hidden"
+            />
+
             {passwordAvailable ? (
               <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                {/* Honeypot anti-bot: manusia tak melihat/mengisi field ini */}
-                <input
-                  type="text"
-                  name="website"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  tabIndex={-1}
-                  autoComplete="off"
-                  aria-hidden="true"
-                  className="hidden"
-                />
                 {turnstile && <div id="turnstile-box" className="flex justify-center" />}
                 {isSsoEnabled && !ssoAvailable && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 text-center">

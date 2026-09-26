@@ -45,7 +45,8 @@ export async function POST(request) {
     // Cron (meai-daily/usage/availability/visual-guard) tidak mengirim field ini → lolos.
     const { website, ts, turnstileToken } = body || {};
     if (typeof website === "string" && website.trim() !== "") {
-      recordLoginEvent({ ip, ok: false, method: "bot", detail: "honeypot" });
+      // len dicatat utk diagnosis (bukan nilainya) — isi panjang khas URL/username
+      recordLoginEvent({ ip, ok: false, method: "bot", detail: `honeypot(len=${website.trim().length})` });
       return NextResponse.json({ error: "Invalid request" }, { status: 400, headers: NO_STORE_HEADERS });
     }
     if (typeof ts === "number" && Date.now() - ts < 1200) {
