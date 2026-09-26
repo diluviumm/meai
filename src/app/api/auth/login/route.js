@@ -54,7 +54,13 @@ export async function POST(request) {
       return NextResponse.json({ error: "Please try again in a moment" }, { status: 400, headers: NO_STORE_HEADERS });
     }
     const turnstileSecret = process.env.CF_TURNSTILE_SECRET;
-    if (turnstileSecret) {
+    // Ronde-37 (pasang kunci riil): akses lokal-langsung (cron/suite loopback,
+    // tanpa stempel proxy & Origin loopback) lolos token — automation tak pernah
+    // mengirim token. Via tunnel/proxy (stempel x-9r-via-proxy) atau Origin asing
+    // = isLocalRequest false → mode ketat di bawah berlaku penuh (wajib token
+    // + siteverify sukses). isLocalRequest anti-spoof: peer socket harus loopback.
+    const turnstileLocal = isLocalRequest(request);
+    if (turnstileSecret && !turnstileLocal) {
       // Official Cloudflare TEST secret (always-pass) = mode uji: token yg ada
       // tetap diverifikasi via API (bukti jalur), tapi TIDAK PERNAH mengunci
       // login bila token kosong / CF tak terjangkau (widget gagal muat).
