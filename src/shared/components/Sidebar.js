@@ -185,6 +185,7 @@ export default function Sidebar({ onClose }) {
               System
             </p>
 
+
             {systemItems.map((item) => (
               <NavItem key={item.href} {...item} active={isActive(item.href)} onClose={onClose} />
             ))}
@@ -195,9 +196,6 @@ export default function Sidebar({ onClose }) {
               return show ? <NavItem key={item.href} {...item} active={isActive(item.href)} onClose={onClose} /> : null;
             })}
 
-            
-            
-            {/* Settings */}
             <NavItem href="/dashboard/profile" label="Settings" icon="settings" active={isActive("/dashboard/profile")} onClose={onClose} />
           </div>
         </nav>
