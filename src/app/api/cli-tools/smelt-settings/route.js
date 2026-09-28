@@ -1,6 +1,7 @@
 "use server";
 
 import { NextResponse } from "next/server";
+import { resolveCliApiKey } from "../resolveApiKey.js";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
@@ -28,10 +29,10 @@ const checkSmeltInstalled = async () => {
   }
 };
 
-const hasMeAIConfig = (settings) => {
+const has9RouterConfig = (settings) => {
   if (!settings) return false;
   return (
-    settings._managedBy === "meai" ||
+    settings._managedBy === "9router" ||
     (typeof settings.baseUrl === "string" && settings.baseUrl.length > 0 && settings.baseUrl.includes("20128"))
   );
 };
@@ -61,7 +62,7 @@ export async function GET() {
     return NextResponse.json({
       installed: true,
       config,
-      hasMeAI: hasMeAIConfig(config),
+      has9Router: has9RouterConfig(config),
       configPath: getSmeltConfigPath(),
     });
   } catch (err) {
@@ -96,9 +97,9 @@ export async function POST(request) {
     const updated = {
       ...existing,
       baseUrl: normalizedBaseUrl,
-      apiKey: apiKey || "sk_meai",
+      apiKey: await resolveCliApiKey(apiKey),
       model: model || existing.model || "provider/model-id",
-      _managedBy: "meai",
+      _managedBy: "9router",
     };
 
     await fs.writeFile(configPath, JSON.stringify(updated, null, 2), "utf-8");
@@ -135,7 +136,7 @@ export async function DELETE() {
       await fs.writeFile(configPath, JSON.stringify(existing, null, 2), "utf-8");
     }
 
-    return NextResponse.json({ success: true, message: "Smelt MeAI settings removed" });
+    return NextResponse.json({ success: true, message: "Smelt 9Router settings removed" });
   } catch (err) {
     return NextResponse.json({ error: { message: err.message } }, { status: 500 });
   }

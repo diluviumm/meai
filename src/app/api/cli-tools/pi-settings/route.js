@@ -1,6 +1,7 @@
 "use server";
 
 import { NextResponse } from "next/server";
+import { resolveCliApiKey } from "../resolveApiKey.js";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
@@ -37,9 +38,9 @@ const checkPiInstalled = async () => {
   }
 };
 
-const hasMeAIConfig = (settings) => {
+const has9RouterConfig = (settings) => {
   if (!settings || !settings.providers) return false;
-  const p = settings.providers["meai"];
+  const p = settings.providers["9router"];
   if (p && p.baseUrl) return true;
   for (const prov of Object.values(settings.providers)) {
     if (prov.baseUrl && prov.baseUrl.includes("20128")) return true;
@@ -90,7 +91,7 @@ export async function GET() {
     return NextResponse.json({
       installed: true,
       config,
-      hasMeAI: hasMeAIConfig(config),
+      has9Router: has9RouterConfig(config),
       configPath,
     });
   } catch (err) {
@@ -144,10 +145,11 @@ export async function POST(request) {
       modelList = [{ id: modelId, name: modelId, contextWindow: 128000, maxTokens: 16384 }];
     }
 
-    existing.providers["meai"] = {
+    existing.providers["9router"] = {
+      ...existingProvider,
       baseUrl: normalizedBaseUrl,
-      apiKey: apiKey || "sk_meai",
-      api: "openai-completions",
+      apiKey: apiKey || existingProvider.apiKey || await resolveCliApiKey(null),
+      api: existingProvider.api || "openai-completions",
       models: modelList,
     };
 
@@ -155,7 +157,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: true,
-      message: "Pi settings applied! Use /model in Pi to select the MeAI model.",
+      message: "Pi settings applied! Use /model in Pi to select the 9Router model.",
       configPath,
     });
   } catch (err) {
@@ -174,13 +176,13 @@ export async function DELETE() {
       return NextResponse.json({ success: true, message: "No config file to reset" });
     }
 
-    if (existing.providers && existing.providers["meai"]) {
-      delete existing.providers["meai"];
+    if (existing.providers && existing.providers["9router"]) {
+      delete existing.providers["9router"];
       if (Object.keys(existing.providers).length === 0) delete existing.providers;
       await fs.writeFile(configPath, JSON.stringify(existing, null, 2), "utf-8");
     }
 
-    return NextResponse.json({ success: true, message: "MeAI removed from Pi" });
+    return NextResponse.json({ success: true, message: "9Router removed from Pi" });
   } catch (err) {
     return NextResponse.json({ error: { message: err.message } }, { status: 500 });
   }

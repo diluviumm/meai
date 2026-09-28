@@ -1,6 +1,7 @@
 "use server";
 
 import { NextResponse } from "next/server";
+import { resolveCliApiKey } from "../resolveApiKey.js";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
@@ -30,26 +31,26 @@ const readConfig = async () => {
   }
 };
 
-const hasMeAIConfig = (config) => {
+const has9RouterConfig = (config) => {
   if (!Array.isArray(config)) return false;
-  return config.some((entry) => entry.name === "MeAI");
+  return config.some((entry) => entry.name === "9Router");
 };
 
-const getMeAIEntry = (config) => {
+const get9RouterEntry = (config) => {
   if (!Array.isArray(config)) return null;
-  return config.find((entry) => entry.name === "MeAI") || null;
+  return config.find((entry) => entry.name === "9Router") || null;
 };
 
 // GET - Read current copilot config
 export async function GET() {
   try {
     const config = await readConfig();
-    const entry = getMeAIEntry(config);
+    const entry = get9RouterEntry(config);
 
     return NextResponse.json({
       installed: true,
       config,
-      hasMeAI: hasMeAIConfig(config),
+      has9Router: has9RouterConfig(config),
       configPath: getConfigPath(),
       currentModel: entry?.models?.[0]?.id || null,
       currentUrl: entry?.models?.[0]?.url || null,
@@ -60,7 +61,7 @@ export async function GET() {
   }
 }
 
-// POST - Apply MeAI config to chatLanguageModels.json
+// POST - Apply 9Router config to chatLanguageModels.json
 export async function POST(request) {
   try {
     const { baseUrl, apiKey, models } = await request.json();
@@ -81,10 +82,10 @@ export async function POST(request) {
     } catch { /* No existing config */ }
 
     const endpointUrl = `${baseUrl}/chat/completions#models.ai.azure.com`;
-    const keyToUse = apiKey || "sk_meai";
+    const keyToUse = await resolveCliApiKey(apiKey);
 
     const newEntry = {
-      name: "MeAI",
+      name: "9Router",
       vendor: "azure",
       apiKey: keyToUse,
       models: models.map((id) => ({
@@ -98,8 +99,8 @@ export async function POST(request) {
       })),
     };
 
-    // Replace existing MeAI entry or append
-    const idx = config.findIndex((e) => e.name === "MeAI");
+    // Replace existing 9Router entry or append
+    const idx = config.findIndex((e) => e.name === "9Router");
     if (idx >= 0) {
       config[idx] = newEntry;
     } else {
@@ -119,7 +120,7 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Remove MeAI entry from chatLanguageModels.json
+// DELETE - Remove 9Router entry from chatLanguageModels.json
 export async function DELETE() {
   try {
     const configPath = getConfigPath();
@@ -136,12 +137,12 @@ export async function DELETE() {
       throw error;
     }
 
-    config = config.filter((e) => e.name !== "MeAI");
+    config = config.filter((e) => e.name !== "9Router");
     await fs.writeFile(configPath, JSON.stringify(config, null, 2));
 
     return NextResponse.json({
       success: true,
-      message: "MeAI removed from Copilot config",
+      message: "9Router removed from Copilot config",
     });
   } catch (error) {
     console.log("Error resetting copilot settings:", error);
