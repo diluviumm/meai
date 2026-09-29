@@ -10,6 +10,7 @@ function isLLMProvider(id) {
   if (!p?.serviceKinds) return true;
   return p.serviceKinds.includes("llm");
 }
+import { previousPeriodQuery } from "@/lib/usageRange";
 import Badge from "./Badge";
 import Card from "./Card";
 import OverviewCards from "@/app/(dashboard)/dashboard/usage/components/OverviewCards";
@@ -248,6 +249,8 @@ export default function UsageStats({
   const sortOrder = searchParams.get("sortOrder") || "asc";
 
   const [stats, setStats] = useState(null);
+  // Ronde-39: stats periode sebelumnya utk delta di kartu KPI (null = tak ada pembanding)
+  const [prevStats, setPrevStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [tableView, setTableView] = useState("model");
@@ -278,9 +281,22 @@ export default function UsageStats({
     return () => clearInterval(id);
   }, [autoRefreshMs]);
 
+  // Label utk tooltip chip delta: jendela 1 hari (today/24h) dibandingkan
+  // dengan hari sebelumnya, sisanya "periode sebelumnya".
+  const compareLabel =
+    period === "today" || period === "24h"
+      ? "yesterday"
+      : period === "custom"
+        ? "previous range"
+        : "previous period";
+
   const queryKey = period === "custom"
     ? `period=custom&from=${encodeURIComponent(customFrom)}&to=${encodeURIComponent(customTo)}`
     : `period=${period}`;
+  // Ronde-39: jendela periode sebelumnya utk delta kartu KPI. Hanya berubah
+  // bersama queryKey (atau pergantian hari saat refresh), sehingga menambahkannya
+  // ke dependensi tidak memicu siklus fetch ekstra.
+  const prevQueryKey = previousPeriodQuery(period, { from: customFrom, to: customTo });
 
   // Fetch connected providers once, deduplicate by provider type
   // Always include noAuth free providers (e.g. opencode) regardless of connections
@@ -331,13 +347,23 @@ export default function UsageStats({
     }
 
     let cancelled = false;
-    fetch(`/api/usage/stats?${queryKey}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
+    // Ronde-39: satu siklus refresh mengambil DUA window sekaligus — periode
+    // berjalan dan periode sebelumnya — agar delta "vs periode sebelumnya"
+    // selalu ikut ter-update tanpa interval tambahan.
+    const statsReq = fetch(`/api/usage/stats?${queryKey}`).then((r) => (r.ok ? r.json() : null));
+    const prevReq = prevQueryKey
+      ? fetch(`/api/usage/stats?${prevQueryKey}`).then((r) => (r.ok ? r.json() : null))
+      : Promise.resolve(null);
+
+    Promise.all([statsReq, prevReq])
+      .then(([data, prev]) => {
         if (cancelled) return;
         if (data) {
           hasLoadedStats.current = true;
-          setStats((prev) => ({ ...prev, ...data }));
+          setStats((p) => ({ ...p, ...data }));
+          // Hanya diganti bersama stats supaya delta tidak pernah
+          // membandingkan dua periode yang tak sinkron.
+          setPrevStats(prev);
         }
       })
       .catch(() => {})
@@ -351,7 +377,7 @@ export default function UsageStats({
     return () => {
       cancelled = true;
     };
-  }, [period, queryKey, tick]);
+  }, [period, queryKey, prevQueryKey, tick]);
 
   // SSE connection - real-time updates for activeRequests + recentRequests only
   useEffect(() => {
@@ -546,7 +572,7 @@ export default function UsageStats({
       )}
 
       {/* Overview cards */}
-      {loading ? spinner : <OverviewCards stats={stats} />}
+      {loading ? spinner : <OverviewCards stats={stats} prev={prevStats} compareLabel={compareLabel} />}
 
       {/* Provider topology + Recent Requests */}
       {loading ? spinner : (

@@ -56,7 +56,10 @@ describe("Claude Code CLI context → OpenAI", () => {
 
   // claude-to-openai.js:155-173 — tool_result image block stringified into raw JSON
   // KNOWN BUG
-  it.fails("tool_result image block is preserved", () => {
+  // Ronde-39: bug pada request/claude-to-openai.js:155-173 sudah teratasi,
+  // jadi test ini berbalik merah sebagai it.fails. Ikuti konvensi
+  // tests/translator/AGENTS.md §6: ubah kembali menjadi it biasa.
+  it("tool_result image block is preserved", () => {
     const out = T(FORMATS.CLAUDE, FORMATS.OPENAI, {
       messages: [
         { role: "assistant", content: [{ type: "tool_use", id: "call_1", name: "screenshot", input: {} }] },

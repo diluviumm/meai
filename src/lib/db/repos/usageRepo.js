@@ -666,7 +666,13 @@ export async function getUsageStats(period = "all", opts = {}) {
         const apiKeyMasked = maskApiKey(r.apiKey);
         // Key by the FULL api key (same as the daily rollup + lastUsed overlay)
         // — masking here collided all keys sharing a prefix into one bucket.
-        const akKey = `${r.apiKey}|${r.model}|${r.provider || "unknown"}`;
+        // Ronde-39 — REGRESI KEAMANAN (test AUDIT-002 merah sejak a406381f,
+        // 23 Sep): baris ini memakai API key MENTAH sebagai object key, sehingga
+        // kunci rahasia ikut terkirim dalam respons /api/usage/stats dan dirender
+        // di dashboard (UsageStats groupedData). Fix keamanan d8c2298d (26 Jun)
+        // sudah memakai apiKeyMasked — dikembalikan ke situ; masked sudah
+        // dihitung di baris atas, jadi tanpa biaya tambahan.
+        const akKey = `${apiKeyMasked}|${r.model}|${r.provider || "unknown"}`;
         if (!stats.byApiKey[akKey]) {
           stats.byApiKey[akKey] = { requests: 0, promptTokens: 0, completionTokens: 0, cachedTokens: 0, cost: 0, rawModel: r.model, provider: providerDisplayName, apiKeyMasked, keyName, apiKeyKey: apiKeyMasked, lastUsed: r.timestamp };
         }

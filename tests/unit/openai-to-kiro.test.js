@@ -11,7 +11,17 @@ import { openaiToKiroRequest } from "../../open-sse/translator/request/openai-to
 
 const contentOf = (result) =>
   result.conversationState.currentMessage.userInputMessage.content;
-const systemPromptOf = (result) => result.systemPrompt || "";
+// Upstream 1892ed77 (10 Sep): "fix(kiro): never send a top-level systemPrompt
+// (400 REQUEST_BODY_INVALID)" — prompt sekarang menumpang di konten giliran
+// user pertama sebagai `<systemPrompt>\n\n[Context: Current time is ...]\n\n<teks>`.
+// Membaca `result.systemPrompt` selalu menghasilkan undefined, sehingga setiap
+// assertion `not.toContain` lulus MENGANGGUR (guard tak mengawasi apa pun).
+// Potong tepat di penanda context: sisanya = system prompt apa adanya.
+const systemPromptOf = (result) => {
+  const content = result?.conversationState?.currentMessage?.userInputMessage?.content ?? "";
+  const marker = content.indexOf("[Context: Current time is ");
+  return marker >= 0 ? content.slice(0, marker).trimEnd() : content;
+};
 
 describe("openaiToKiroRequest", () => {
   describe("basic message conversion", () => {
@@ -582,8 +592,8 @@ describe("openaiToKiroRequest", () => {
         {}
       );
 
-      expect(first.systemPrompt).toBe(second.systemPrompt);
-      expect(first.systemPrompt).not.toContain("Current time");
+      expect(systemPromptOf(first)).toBe(systemPromptOf(second));
+      expect(systemPromptOf(first)).not.toContain("Current time");
       expect(first.conversationState.currentMessage.userInputMessage.content).toContain("Current time");
     });
 

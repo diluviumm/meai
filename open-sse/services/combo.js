@@ -74,9 +74,15 @@ export function reorderByCapabilities(models, required) {
     return soft.every((c) => caps[c] === true) ? 0 : 1;
   };
 
+  // Ronde-39: bila TIDAK ADA model yang memenuhi hard cap (semua tier 2),
+  // pengurutan tidak mengubah apa pun — kembalikan array ASLI (referensi sama)
+  // sesuai kontrak "keeps order when no model matches", agar pemanggil bisa
+  // memakai identitas untuk melewati update tanpa menyalin array.
+  const ranked = models.map((m, i) => ({ m, i, t: tierOf(m) }));
+  if (ranked.every((x) => x.t === 2)) return models;
+
   // Stable sort by tier (Array.prototype.sort is stable in modern engines).
-  return models
-    .map((m, i) => ({ m, i, t: tierOf(m) }))
+  return ranked
     .sort((a, b) => a.t - b.t || a.i - b.i)
     .map((x) => x.m);
 }
@@ -178,7 +184,23 @@ export function detectRequiredCapabilities(body) {
   const contents = body.contents || body.request?.contents;                      // gemini / antigravity
   for (const c of trailingUserItems(contents)) scanContent(c.parts);
 
-  // search: temporarily disabled in auto-switch (feature not wired yet).
+  // Ronde-39 — fitur DIKUNCI KEMBALI (sebelumnya: "temporarily disabled ...
+  // feature not wired yet"). Datanya sudah lengkap di capabilities.js
+  // (search: true utk Claude 4.x+/GPT-5.x/Gemini 3/Grok/Perplexity), sedangkan
+  // tool `web_search` HANYA didukung model tsb — tanpa deteksi ini auto-switch
+  // bisa menempatkan model non-search lebih dulu dan memicu 400 dari provider.
+  // `search` bukan HARD cap: kalau tak ada model yang mendukung, semua masuk
+  // tier 1 dan urutan tetap stabil — tidak ada perubahan routing paksa.
+  if (Array.isArray(body.tools)) {
+    for (const t of body.tools) {
+      const raw = typeof t === "string" ? t : t?.type || t?.function?.name || "";
+      // dinormalkan dulu: "research" TIDAK boleh cocok dengan "search".
+      const norm = String(raw).toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (norm.startsWith("websearch") || norm.startsWith("googlesearch") || norm.startsWith("search")) {
+        required.add("search");
+      }
+    }
+  }
 
   return required;
 }

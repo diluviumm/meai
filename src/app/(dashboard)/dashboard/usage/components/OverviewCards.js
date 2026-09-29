@@ -64,7 +64,43 @@ Spark.propTypes = {
   color: PropTypes.string,
 };
 
-function KpiCard({ label, value, colorClass, title, series, caption, sparkColor }) {
+/**
+ * Ronde-39 — chip delta vs periode sebelumnya.
+ * - value null / tidak finita / tanpa pembanding → tidak dirender (tanpa angka bohong).
+ * - tone "cost": naik = merah, turun = hijau (biaya = hal yang ingin ditekan).
+ * - selain cost: netral, arah saja disampaikan lewat anak panah.
+ */
+function Delta({ value, tone, compareLabel }) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  const flat = Math.abs(value) < 0.05;
+  const up = value > 0;
+  const arrow = flat ? "→" : up ? "▲" : "▼";
+  const cls = flat
+    ? "text-text-subtle"
+    : tone === "cost"
+      ? up
+        ? "text-error"
+        : "text-success"
+      : "text-text-muted";
+  const sign = flat ? "" : up ? "+" : "";
+  return (
+    <span
+      className={`text-[10px] font-semibold tabular-nums ${cls}`}
+      title={`vs ${compareLabel}: ${up ? "+" : ""}${value.toFixed(1)}%`}
+    >
+      {arrow} {sign}
+      {value.toFixed(1)}%
+    </span>
+  );
+}
+
+Delta.propTypes = {
+  value: PropTypes.number,
+  tone: PropTypes.string,
+  compareLabel: PropTypes.string,
+};
+
+function KpiCard({ label, value, colorClass, title, series, caption, sparkColor, delta, deltaTone, compareLabel }) {
   return (
     <Card className="flex min-w-0 flex-col items-center text-center gap-1 px-3 py-3 sm:px-4">
       {/* label blok tinggi tetap -> angka & sparkline sejajar horizontal lintas kartu */}
@@ -73,6 +109,9 @@ function KpiCard({ label, value, colorClass, title, series, caption, sparkColor 
       </span>
       <span className={`w-full truncate text-lg font-bold xl:text-xl ${colorClass}`} title={title}>
         {value}
+      </span>
+      <span className="flex min-h-[14px] w-full items-center justify-center">
+        <Delta value={delta} tone={deltaTone} compareLabel={compareLabel} />
       </span>
       <div className="w-full opacity-80">
         <Spark
@@ -104,10 +143,13 @@ KpiCard.propTypes = {
   series: PropTypes.array,
   caption: PropTypes.string,
   sparkColor: PropTypes.string,
+  delta: PropTypes.number,
+  deltaTone: PropTypes.string,
+  compareLabel: PropTypes.string,
 };
 
 /** KPI + sparkline live (last10Minutes) — ronde-26; sejajar + caption EN + cached series — ronde-28 */
-export default function OverviewCards({ stats }) {
+export default function OverviewCards({ stats, prev, compareLabel }) {
   const last = stats?.last10Minutes || [];
   const series = {
     req: last.map((d) => d.requests || 0),
@@ -130,6 +172,21 @@ export default function OverviewCards({ stats }) {
       : null;
   const perReq = stats.totalRequests > 0 ? stats.totalCost / stats.totalRequests : 0;
 
+  // Ronde-39: % perubahan vs periode sebelumnya. Pembulatan nol = tanpa
+  // pembanding (mis. periode "all", atau data periode lama nol) → chip disembunyikan
+  // alih-alih menampilkan Infinity/0% yang menyesatkan.
+  const pct = (now, before) => {
+    if (!prev) return null;
+    const b = Number(before) || 0;
+    if (b <= 0) return null;
+    return ((Number(now) || 0) - b) / b * 100;
+  };
+  const dReq = pct(stats.totalRequests, prev?.totalRequests);
+  const dInp = pct(stats.totalPromptTokens, prev?.totalPromptTokens);
+  const dCached = pct(stats.totalCachedTokens, prev?.totalCachedTokens);
+  const dOut = pct(stats.totalCompletionTokens, prev?.totalCompletionTokens);
+  const dCost = pct(stats.totalCost, prev?.totalCost);
+
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:gap-4">
       <KpiCard
@@ -140,6 +197,8 @@ export default function OverviewCards({ stats }) {
         series={series.req}
         sparkColor="#8b7ce8"
         caption={`+${fmtCompact(last10Req)} in last 10 min`}
+        delta={dReq}
+        compareLabel={compareLabel}
       />
       <KpiCard
         label="Total Input Tokens"
@@ -148,6 +207,8 @@ export default function OverviewCards({ stats }) {
         title={fmt(stats.totalPromptTokens)}
         series={series.inp}
         caption={`+${fmtCompact(last10Inp)} in 10 min`}
+        delta={dInp}
+        compareLabel={compareLabel}
       />
       <KpiCard
         label="Cached Tokens"
@@ -156,6 +217,8 @@ export default function OverviewCards({ stats }) {
         title={`${fmt(stats.totalCachedTokens)} (${hitRate ?? 0}% dari input)`}
         series={series.cached}
         caption={hitRate === null ? "cache hits" : `${hitRate}% hit rate · +${fmtCompact(last10Cached)} in 10 min`}
+        delta={dCached}
+        compareLabel={compareLabel}
       />
       <KpiCard
         label="Output Tokens"
@@ -164,6 +227,8 @@ export default function OverviewCards({ stats }) {
         title={fmt(stats.totalCompletionTokens)}
         series={series.out}
         caption={`+${fmtCompact(last10Out)} in 10 min`}
+        delta={dOut}
+        compareLabel={compareLabel}
       />
       <KpiCard
         label="Est. Cost"
@@ -172,6 +237,9 @@ export default function OverviewCards({ stats }) {
         title={`~${fmtCost(stats.totalCost)} · ${fmt(stats.totalRequests)} request`}
         series={series.cost}
         caption={`~$${perReq.toFixed(4)} / request`}
+        delta={dCost}
+        deltaTone="cost"
+        compareLabel={compareLabel}
       />
     </div>
   );
@@ -179,4 +247,6 @@ export default function OverviewCards({ stats }) {
 
 OverviewCards.propTypes = {
   stats: PropTypes.object.isRequired,
+  prev: PropTypes.object,
+  compareLabel: PropTypes.string,
 };

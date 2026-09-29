@@ -71,6 +71,11 @@ vi.mock("../../open-sse/rtk/index.js", () => ({
 vi.mock("../../open-sse/rtk/headroom.js", () => ({
   compressWithHeadroom: vi.fn(async () => null),
   formatHeadroomLog: vi.fn(() => ""),
+  // Ronde-39: chatCore.js mengimpor KEEMPAT export ini (baris 28). Mock yang
+  // hanya memuat 2 nama membuat impor gagal → "No formatHeadroomSizeLog export
+  // is defined". Test saudara (minimax-transport-target-format) sudah lengkap.
+  formatHeadroomSizeLog: vi.fn(() => ""),
+  isHeadroomPhantomSavings: vi.fn(() => false),
 }));
 
 vi.mock("../../open-sse/providers/capabilities.js", () => ({

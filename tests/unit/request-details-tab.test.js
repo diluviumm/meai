@@ -22,7 +22,11 @@ beforeAll(async () => {
   vi.resetModules();
   db = await import("@/lib/db/index.js");
   await db.initDb();
-  await db.updateSettings({ enableObservability2: true, observabilityBatchSize: 1 });
+  // Ronde-39: key harus `enableObservability` — sebelumnya tertulis
+  // `enableObservability2` (typo) sehingga flag tidak pernah menyala,
+  // saveRequestDetail() early-return, dan 2 test gagal karena baris tidak
+  // pernah tersimpan (COUNT=0).
+  await db.updateSettings({ enableObservability: true, observabilityBatchSize: 1 });
 
   const { getAdapter } = await import("@/lib/db/driver.js");
   adapter = await getAdapter();
