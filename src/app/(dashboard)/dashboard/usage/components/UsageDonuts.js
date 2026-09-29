@@ -33,23 +33,28 @@ function Donut({ data, colors, caption, total }) {
     );
   }
   return (
-    <div className="relative flex min-h-[170px] flex-1 items-center justify-center rounded-xl border border-border-subtle bg-bg/40 py-2">
-      <ResponsiveContainer width="100%" height={160}>
-        <PieChart>
-          <Pie data={shown} dataKey="value" nameKey="name" innerRadius={44} outerRadius={64} paddingAngle={3} strokeWidth={0}>
-            {shown.map((d, i) => (
-              <Cell key={d.name} fill={colors[i % colors.length]} />
-            ))}
-          </Pie>
-          <Tooltip
-            contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10, fontSize: 12 }}
-            itemStyle={{ color: "var(--color-text-main)" }}
-            formatter={(v, n) => [fmt(v), n]}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-      {centerLabel(total, caption)}
-      <ul className="relative z-10 mt-1 flex w-full flex-wrap justify-center gap-x-3 gap-y-0.5">
+    // Ronde-35: kolom (bukan baris) — sebelumnya `items-center` di baris membuat
+    // <ul> legend ikut terpusat secara vertikal dan MENIMPA label center donut.
+    <div className="relative flex min-h-[170px] flex-1 flex-col items-center justify-center gap-1 rounded-xl border border-border-subtle bg-bg/40 py-2">
+      {/* pembungkus relatif: label center hanya menempel pada area donut */}
+      <div className="relative w-full">
+        <ResponsiveContainer width="100%" height={160}>
+          <PieChart>
+            <Pie data={shown} dataKey="value" nameKey="name" innerRadius={44} outerRadius={64} paddingAngle={3} strokeWidth={0}>
+              {shown.map((d, i) => (
+                <Cell key={d.name} fill={colors[i % colors.length]} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10, fontSize: 12 }}
+              itemStyle={{ color: "var(--color-text-main)" }}
+              formatter={(v, n) => [fmt(v), n]}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        {centerLabel(total, caption)}
+      </div>
+      <ul className="relative z-10 flex w-full flex-wrap justify-center gap-x-3 gap-y-0.5 px-1">
         {shown.map((d, i) => (
           <li key={d.name} className="flex items-center gap-1 text-[11px] text-text-muted">
             <span className="inline-block size-2 rounded-full" style={{ background: colors[i % colors.length] }} />
