@@ -11,6 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  LabelList,
 } from "recharts";
 import Card from "@/shared/components/Card";
 
@@ -24,6 +25,15 @@ const fmtTokens = (n) => {
 
 const truncate = (s, max = 26) => (s && s.length > max ? s.slice(0, max) + "…" : s || "");
 
+// Ronde-36: cost harus terbaca sampai nilai pecahan kecil.
+const fmtCost = (n) => {
+  const v = Number(n) || 0;
+  if (v >= 1000) return `$${(v / 1000).toFixed(1)}K`;
+  if (v >= 1) return `$${v.toFixed(2)}`;
+  if (v > 0) return `$${v.toFixed(4)}`;
+  return "$0";
+};
+
 export default function TopModelsChart({ byModel }) {
   const [viewMode, setViewMode] = useState("tokens");
 
@@ -34,20 +44,21 @@ export default function TopModelsChart({ byModel }) {
         name: truncate(data.rawModel || "Unknown"),
         tokens: (data.promptTokens || 0) + (data.completionTokens || 0),
         requests: data.requests || 0,
+        cost: data.cost || 0,
       }))
       .filter((d) => d[viewMode] > 0)
       .sort((a, b) => b[viewMode] - a[viewMode])
       .slice(0, 5);
   }, [byModel, viewMode]);
 
-  const fmt = viewMode === "tokens" ? fmtTokens : String;
-  const label = viewMode === "tokens" ? "Tokens" : "Requests";
+  const fmt = viewMode === "tokens" ? fmtTokens : viewMode === "cost" ? fmtCost : String;
+  const label = viewMode === "tokens" ? "Tokens" : viewMode === "cost" ? "Cost (USD)" : "Requests";
 
   return (
     <Card className="flex min-w-0 flex-col gap-3 p-3 sm:p-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold text-text-muted uppercase tracking-wide">Top Models</span>
-        <div className="grid grid-cols-2 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1">
+        <div className="grid grid-cols-3 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1">
           <button
             onClick={() => setViewMode("tokens")}
             className={`px-2.5 py-0.5 rounded-md text-xs font-medium transition-colors ${viewMode === "tokens" ? "bg-primary text-[#171232] shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
@@ -59,6 +70,13 @@ export default function TopModelsChart({ byModel }) {
             className={`px-2.5 py-0.5 rounded-md text-xs font-medium transition-colors ${viewMode === "requests" ? "bg-primary text-[#171232] shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
           >
             Requests
+          </button>
+          <button
+            onClick={() => setViewMode("cost")}
+            title="Biaya per model (USD)"
+            className={`px-2.5 py-0.5 rounded-md text-xs font-medium transition-colors ${viewMode === "cost" ? "bg-primary text-[#171232] shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
+          >
+            Cost
           </button>
         </div>
       </div>
@@ -101,6 +119,13 @@ export default function TopModelsChart({ byModel }) {
               {chartData.map((_, i) => (
                 <Cell key={i} fill={COLORS[i % COLORS.length]} fillOpacity={0.85} />
               ))}
+              {/* batang horizontal → label di ujung kanan */}
+              <LabelList
+                dataKey={viewMode}
+                position="right"
+                formatter={fmt}
+                style={{ fontSize: 10, fontWeight: 600, fill: "currentColor", fillOpacity: 0.75 }}
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

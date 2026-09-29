@@ -83,7 +83,7 @@ function QuotaRing({ pct }) {
           className="transition-all duration-500"
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold" style={{ color }}>
+      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold tabular-nums" style={{ color }}>
         {pct}%
       </span>
     </div>

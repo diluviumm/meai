@@ -11,6 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  LabelList,
 } from "recharts";
 import Card from "@/shared/components/Card";
 
@@ -20,6 +21,16 @@ const fmtTokens = (n) => {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return String(n || 0);
+};
+
+// Ronde-36: formatter khusus cost — angka kecil ($0.0016) harus tetap terbaca,
+// bukan "0" yang bikin bingung.
+const fmtCost = (n) => {
+  const v = Number(n) || 0;
+  if (v >= 1000) return `$${(v / 1000).toFixed(1)}K`;
+  if (v >= 1) return `$${v.toFixed(2)}`;
+  if (v > 0) return `$${v.toFixed(4)}`;
+  return "$0";
 };
 
 export default function ProviderBarChart({ byProvider }) {
@@ -32,19 +43,20 @@ export default function ProviderBarChart({ byProvider }) {
         name: id,
         tokens: (data.promptTokens || 0) + (data.completionTokens || 0),
         requests: data.requests || 0,
+        cost: data.cost || 0,
       }))
       .filter((d) => d[viewMode] > 0)
       .sort((a, b) => b[viewMode] - a[viewMode]);
   }, [byProvider, viewMode]);
 
-  const fmt = viewMode === "tokens" ? fmtTokens : String;
-  const label = viewMode === "tokens" ? "Tokens" : "Requests";
+  const fmt = viewMode === "tokens" ? fmtTokens : viewMode === "cost" ? fmtCost : String;
+  const label = viewMode === "tokens" ? "Tokens" : viewMode === "cost" ? "Cost (USD)" : "Requests";
 
   return (
     <Card className="flex min-w-0 flex-col gap-3 p-3 sm:p-4">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold text-text-muted uppercase tracking-wide">By Provider</span>
-        <div className="grid grid-cols-2 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1">
+        <div className="grid grid-cols-3 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1">
           <button
             onClick={() => setViewMode("tokens")}
             className={`px-2.5 py-0.5 rounded-md text-xs font-medium transition-colors ${viewMode === "tokens" ? "bg-primary text-[#171232] shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
@@ -56,6 +68,13 @@ export default function ProviderBarChart({ byProvider }) {
             className={`px-2.5 py-0.5 rounded-md text-xs font-medium transition-colors ${viewMode === "requests" ? "bg-primary text-[#171232] shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
           >
             Requests
+          </button>
+          <button
+            onClick={() => setViewMode("cost")}
+            title="Biaya per provider (USD)"
+            className={`px-2.5 py-0.5 rounded-md text-xs font-medium transition-colors ${viewMode === "cost" ? "bg-primary text-[#171232] shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
+          >
+            Cost
           </button>
         </div>
       </div>
@@ -97,6 +116,13 @@ export default function ProviderBarChart({ byProvider }) {
               {chartData.map((_, i) => (
                 <Cell key={i} fill={COLORS[i % COLORS.length]} fillOpacity={0.85} />
               ))}
+              {/* nilai eksplisit di tiap batang — biar tidak menebak dari sumbu */}
+              <LabelList
+                dataKey={viewMode}
+                position="top"
+                formatter={fmt}
+                style={{ fontSize: 10, fontWeight: 600, fill: "currentColor", fillOpacity: 0.75 }}
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

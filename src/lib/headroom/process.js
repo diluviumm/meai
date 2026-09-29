@@ -1,4 +1,5 @@
 import fs from "fs";
+import net from "net";
 import path from "path";
 import { spawn } from "child_process";
 import { DATA_DIR } from "@/lib/dataDir.js";
@@ -52,6 +53,27 @@ function extrasProxyArgs({ codeAware, kompress } = {}) {
   return args;
 }
 
+// Ronde-36: apakah port sudah menerima koneksi? Dipakai untuk mendeteksi
+// instance headroom yang dijalankan OLEH UNIT SYSTEMD (meai-headroom.service),
+// yang tidak pernah menulis proxy.pid milik kita — kalau tidak dicek, start
+// mem-spawn proses kedua yang langsung mati EADDRINUSE -> API balik 500.
+function portAccepts(port, host = "127.0.0.1", timeoutMs = 800) {
+  return new Promise((resolve) => {
+    let settled = false;
+    let sock = null;
+    const done = (v) => {
+      if (settled) return;
+      settled = true;
+      try { if (sock) sock.destroy(); } catch { /* noop */ }
+      resolve(v);
+    };
+    sock = net.connect({ port: Number(port), host });
+    sock.once("connect", () => done(true));
+    sock.once("error", () => done(false));
+    sock.setTimeout(timeoutMs, () => done(false));
+  });
+}
+
 export async function startHeadroomProxy({ port = DEFAULT_PORT, codeAware = false, kompress = true } = {}) {
   const safePort = Number(port) > 0 && Number(port) < 65536 ? Number(port) : DEFAULT_PORT;
   const binary = findHeadroomBinary();
@@ -63,6 +85,12 @@ export async function startHeadroomProxy({ port = DEFAULT_PORT, codeAware = fals
 
   const existing = getManagedPid();
   if (existing) return { pid: existing, alreadyRunning: true };
+
+  // Ronde-36: kalau port sudah dipegang proses lain (unit systemd
+  // meai-headroom.service), jangan spawn duplikat — pasti EADDRINUSE.
+  if (await portAccepts(safePort)) {
+    return { pid: null, alreadyRunning: true, port: safePort, managed: false };
+  }
 
   ensureDir();
   // spawn stdio requires fd numbers, not WriteStream objects.
@@ -87,16 +115,30 @@ export async function startHeadroomProxy({ port = DEFAULT_PORT, codeAware = fals
   writePid(child.pid);
 
   // Wait until the process either stays alive briefly (success) or exits fast (failure).
+  let outFdClosed = false;
+  const closeOut = () => {
+    if (outFdClosed) return;
+    outFdClosed = true;
+    try { fs.closeSync(outFd); } catch { /* sudah tertutup */ }
+  };
+  let lostRace = false;
+
   await new Promise((resolve, reject) => {
     const startupTimer = setTimeout(() => {
       if (isPidAlive(child.pid)) resolve();
       else reject(new Error("headroom proxy exited during startup — see proxy.log"));
     }, STARTUP_TIMEOUT_MS);
 
-    child.once("exit", (code) => {
+    child.once("exit", async (code) => {
       clearTimeout(startupTimer);
       clearPid();
-      fs.closeSync(outFd);
+      closeOut();
+      // Balapan start: proses lain lebih dulu memegang port → bukan kegagalan.
+      if (await portAccepts(safePort)) {
+        lostRace = true;
+        resolve();
+        return;
+      }
       const e = new Error(`headroom proxy exited early (code=${code}) — see proxy.log`);
       e.code = "EARLY_EXIT";
       reject(e);
@@ -104,7 +146,8 @@ export async function startHeadroomProxy({ port = DEFAULT_PORT, codeAware = fals
   });
 
   // Close parent's copy of the fd; child retains its own after unref.
-  fs.closeSync(outFd);
+  closeOut();
+  if (lostRace) return { pid: null, alreadyRunning: true, port: safePort, managed: false };
 
   return { pid: child.pid, alreadyRunning: false };
 }

@@ -28,6 +28,16 @@ export function parseCustomRange(searchParams) {
   if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
     return { period, ok: false, error: "from / to is not a real date" };
   }
+
+  // Ronde-36: Date() ME-ROLL tanggal tak valid (2026-02-30 → 2026-03-02,
+  // 2026-13-01 → bulan depan) sehingga lolos cek isNaN di atas. Cocokkan
+  // ulang komponen lokal-nya supaya tanggal bodong tidak diterima diam-diam.
+  const localIso = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  if (localIso(a) !== from || localIso(b) !== to) {
+    return { period, ok: false, error: "from / to is not a real date" };
+  }
+
   if (from > to) {
     return { period, ok: false, error: "from must not be after to" };
   }
