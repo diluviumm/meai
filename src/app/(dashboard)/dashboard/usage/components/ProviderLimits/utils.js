@@ -7,6 +7,20 @@ export const REFRESH_INTERVAL_MS = 60000;
 export const CLAUDE_REFRESH_INTERVAL_MS = 600000;
 export const DEPLETED_QUOTA_THRESHOLD = 5;
 export const AUTO_REFRESH_STORAGE_KEY = "quotaAutoRefresh";
+
+// ── Ronde-35: interval auto-refresh page quota ──────────────────────────────
+// Keluhan: "auto refresh juga buat menjadi 2-3 atau 5 detik". Interval lama
+// (60 detik, REFRESH_INTERVAL_MS) tetap dipertahankan sebagai opsi.
+export const DEFAULT_QUOTA_REFRESH_MS = 5000;
+export const QUOTA_REFRESH_MS_STORAGE_KEY = "quotaRefreshMs";
+export const QUOTA_REFRESH_OPTIONS = [
+  { value: 2000, label: "2s" },
+  { value: 3000, label: "3s" },
+  { value: 5000, label: "5s" },
+  { value: 10000, label: "10s" },
+  { value: 30000, label: "30s" },
+  { value: 60000, label: "60s" },
+];
 export const CONNECTIONS_PAGE_SIZE = 20;
 export const ACCOUNT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 export const ACCOUNT_PAGE_SIZE_MAX = 500;

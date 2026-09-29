@@ -108,3 +108,4 @@ debug.log
 *.bak-*
 *.tgz
 PLAN-FITUR.md
+.jspace/

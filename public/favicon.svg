@@ -1,11 +1,14 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" rx="6" fill="url(#gradient)"/>
-  <text x="16" y="24" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="700" fill="white" text-anchor="middle">9</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="MeAI">
   <defs>
-    <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#f97815"/>
-      <stop offset="1" stop-color="#c2590a"/>
+    <linearGradient id="m" x1="12" y1="52" x2="52" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5d4fb0"/>
+      <stop offset="0.55" stop-color="#7f74e0"/>
+      <stop offset="1" stop-color="#22d3ee"/>
     </linearGradient>
   </defs>
+  <rect width="64" height="64" rx="15" fill="#141318"/>
+  <rect x="14" y="35" width="9" height="15" rx="4.5" fill="url(#m)" opacity="0.55"/>
+  <rect x="27.5" y="26" width="9" height="24" rx="4.5" fill="url(#m)" opacity="0.8"/>
+  <rect x="41" y="16" width="9" height="34" rx="4.5" fill="url(#m)"/>
+  <circle cx="45.5" cy="10.5" r="3.6" fill="#22d3ee"/>
 </svg>
-

@@ -15,6 +15,16 @@ function isAuthExpiredMessage(usage) {
   return AUTH_EXPIRED_PATTERNS.some((p) => msg.includes(p));
 }
 
+// ── Ronde-35: cache quota in-memory ─────────────────────────────────────────
+// Page quota kini bisa auto-refresh tiap 2–5 detik; tanpa cache itu artinya
+// memukul API provider (opencode/codebuddy/...) setiap tick dan gampang kena
+// rate-limit. force=1 (tombol Refresh) selalu menembus cache.
+const QUOTA_TTL_MS = Number(process.env.MEAI_QUOTA_TTL_MS || 5000);
+// Saat provider/koneksi error (mis. 505 setelah tab lama tidak disentuh),
+// data terakhir yang masih segar tetap dikirim daripada memutus tampilan.
+const QUOTA_STALE_MAX_MS = Number(process.env.MEAI_QUOTA_STALE_MAX_MS || 300000);
+const quotaCache = new Map();
+
 /**
  * Refresh credentials using executor and update database
  * @param {boolean} force - Skip needsRefresh check and always attempt refresh
@@ -145,6 +155,12 @@ export async function GET(request, { params }) {
       return Response.json({ message: "Usage not available for this connection" });
     }
 
+    // Cache hit → jawab langsung tanpa menyentuh API provider
+    const cached = quotaCache.get(connection.id);
+    if (!force && cached && Date.now() - cached.at < QUOTA_TTL_MS) {
+      return Response.json(cached.payload);
+    }
+
     // Resolve connection proxy config; force strictProxy=false so quota/refresh fall back to direct on failure
     const proxyConfig = await resolveConnectionProxyConfig(connection.providerSpecificData);
     const proxyOptions = {
@@ -183,10 +199,21 @@ export async function GET(request, { params }) {
       }
     }
 
+    quotaCache.set(connection.id, { at: Date.now(), payload: usage });
     return Response.json(usage);
   } catch (error) {
     const provider = connection?.provider ?? "unknown";
     console.warn(`[Usage] ${provider}: ${error.message}`);
+    // Provider/koneksi lagi error → kirim data terakhir bila masih segar,
+    // supaya page quota tidak putus/ganti jadi error besar (keluhan "505").
+    const stale = connection?.id ? quotaCache.get(connection.id) : null;
+    if (stale && Date.now() - stale.at <= QUOTA_STALE_MAX_MS) {
+      return Response.json({
+        ...stale.payload,
+        stale: true,
+        staleReason: error.message,
+      });
+    }
     return Response.json({ error: error.message }, { status: 500 });
   }
 }

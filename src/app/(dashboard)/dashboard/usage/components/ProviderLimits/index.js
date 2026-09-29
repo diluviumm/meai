@@ -28,10 +28,12 @@ import {
   getQuotaCache,
   setQuotaCache,
   QUOTA_CACHE_KEY,
-  REFRESH_INTERVAL_MS,
   CLAUDE_REFRESH_INTERVAL_MS,
   DEPLETED_QUOTA_THRESHOLD,
   AUTO_REFRESH_STORAGE_KEY,
+  DEFAULT_QUOTA_REFRESH_MS,
+  QUOTA_REFRESH_MS_STORAGE_KEY,
+  QUOTA_REFRESH_OPTIONS,
   CONNECTIONS_PAGE_SIZE,
   ACCOUNT_PAGE_SIZE_OPTIONS,
   ACCOUNT_PAGE_SIZE_MAX,
@@ -180,11 +182,14 @@ export default function ProviderLimits() {
   const [loading, setLoading] = useState({});
   const [errors, setErrors] = useState({});
   const [autoRefresh, setAutoRefresh] = useState(true);
+  // Ronde-35: interval auto-refresh bisa 2/3/5/10/30/60 detik (default 5 detik)
+  const [refreshMs, setRefreshMs] = useState(DEFAULT_QUOTA_REFRESH_MS);
+  const refreshSeconds = Math.max(1, Math.round(refreshMs / 1000));
   const [autoPingMaps, setAutoPingMaps] = useState({ claude: {}, codex: {} });
   const [lastUpdated, setLastUpdated] = useState(null);
   const [hasHydratedAutoRefresh, setHasHydratedAutoRefresh] = useState(false);
   const [refreshingAll, setRefreshingAll] = useState(false);
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(DEFAULT_QUOTA_REFRESH_MS / 1000);
   const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
@@ -274,7 +279,15 @@ export default function ProviderLimits() {
         `[ProviderLimits] Fetching quota for ${provider} (${connectionId})`,
       );
       const url = `/api/usage/${connectionId}${force ? "?force=1" : ""}`;
-      const response = await fetch(url);
+      // Ronde-35: koneksi keep-alive yang lama idle bisa membuang response
+      // (505/502/reset) — coba ulang sekali sebelum dianggap gagal, supaya
+      // page quota tidak langsung menampilkan error besar karena satu tick.
+      let response;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        response = await fetch(url, { cache: "no-store" });
+        if (response.status < 500 || attempt === 2) break;
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -311,6 +324,12 @@ export default function ProviderLimits() {
       }
 
       const data = await response.json();
+      if (data.stale) {
+        // Server tidak menemukan data segar → mengirim cache terakhir.
+        console.warn(
+          `[ProviderLimits] ${provider} serving cached quota: ${data.staleReason}`,
+        );
+      }
       console.log(`[ProviderLimits] Got quota for ${provider}:`, data);
 
       // Parse quota data using provider-specific parser
@@ -527,11 +546,11 @@ export default function ProviderLimits() {
     if (refreshingAll) return;
 
     setRefreshingAll(true);
-    setCountdown(60);
+    setCountdown(refreshSeconds);
 
     // Throttle Claude: poll its quota every Nth auto-tick (manual force bypasses)
     const tick = (tickCountRef.current += 1);
-    const claudeEvery = Math.round(CLAUDE_REFRESH_INTERVAL_MS / REFRESH_INTERVAL_MS);
+    const claudeEvery = Math.max(1, Math.round(CLAUDE_REFRESH_INTERVAL_MS / refreshMs));
     const shouldFetch = (conn) =>
       force || conn.provider !== "claude" || tick % claudeEvery === 0;
 
@@ -558,7 +577,7 @@ export default function ProviderLimits() {
     } finally {
       setRefreshingAll(false);
     }
-  }, [refreshingAll, fetchConnections, fetchQuota, page]);
+  }, [refreshingAll, fetchConnections, fetchQuota, page, refreshMs, refreshSeconds]);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -588,6 +607,14 @@ export default function ProviderLimits() {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem(AUTO_REFRESH_STORAGE_KEY);
     setAutoRefresh(stored === null ? true : stored === "true");
+    // Ronde-35: pulihkan interval auto-refresh pilihan pengguna
+    try {
+      const rawMs = window.localStorage.getItem(QUOTA_REFRESH_MS_STORAGE_KEY);
+      if (rawMs !== null) {
+        const ms = Number(rawMs);
+        if (QUOTA_REFRESH_OPTIONS.some((o) => o.value === ms)) setRefreshMs(ms);
+      }
+    } catch {}
     setHasHydratedAutoRefresh(true);
   }, []);
 
@@ -595,7 +622,8 @@ export default function ProviderLimits() {
   useEffect(() => {
     if (typeof window === "undefined" || !hasHydratedAutoRefresh) return;
     window.localStorage.setItem(AUTO_REFRESH_STORAGE_KEY, String(autoRefresh));
-  }, [autoRefresh, hasHydratedAutoRefresh]);
+    window.localStorage.setItem(QUOTA_REFRESH_MS_STORAGE_KEY, String(refreshMs));
+  }, [autoRefresh, refreshMs, hasHydratedAutoRefresh]);
 
   // Load auto-ping per-connection maps
   useEffect(() => {
@@ -720,15 +748,15 @@ export default function ProviderLimits() {
       return;
     }
 
-    // Main refresh interval
+    // Main refresh interval (ronde-35: interval bisa diatur 2–60 detik)
     intervalRef.current = setInterval(() => {
       refreshAll();
-    }, REFRESH_INTERVAL_MS);
+    }, refreshMs);
 
     // Countdown interval
     countdownRef.current = setInterval(() => {
       setCountdown((prev) => {
-        if (prev <= 1) return 60;
+        if (prev <= 1) return refreshSeconds;
         return prev - 1;
       });
     }, 1000);
@@ -737,7 +765,7 @@ export default function ProviderLimits() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [autoRefresh, refreshAll, hasHydratedAutoRefresh]);
+  }, [autoRefresh, refreshAll, hasHydratedAutoRefresh, refreshMs, refreshSeconds]);
 
   // Pause auto-refresh when tab is hidden (Page Visibility API)
   useEffect(() => {
@@ -753,9 +781,11 @@ export default function ProviderLimits() {
         }
       } else if (autoRefresh && hasHydratedAutoRefresh) {
         // Resume auto-refresh when tab becomes visible
-        intervalRef.current = setInterval(() => refreshAll(), REFRESH_INTERVAL_MS);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        if (countdownRef.current) clearInterval(countdownRef.current);
+        intervalRef.current = setInterval(() => refreshAll(), refreshMs);
         countdownRef.current = setInterval(() => {
-          setCountdown((prev) => (prev <= 1 ? 60 : prev - 1));
+          setCountdown((prev) => (prev <= 1 ? refreshSeconds : prev - 1));
         }, 1000);
       }
     };
@@ -764,7 +794,7 @@ export default function ProviderLimits() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [autoRefresh, refreshAll, hasHydratedAutoRefresh]);
+  }, [autoRefresh, refreshAll, hasHydratedAutoRefresh, refreshMs, refreshSeconds]);
 
   const sortedConnections = useMemo(
     () =>
@@ -1103,6 +1133,31 @@ export default function ProviderLimits() {
             )}
           </button>
 
+          {/* Ronde-35: interval auto-refresh (2/3/5/10/30/60 detik) */}
+          {autoRefresh && (
+            <label
+              className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-black/10 px-2 text-xs text-text-muted transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5"
+              title="Auto-refresh interval for all quota cards"
+            >
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">
+                timer
+              </span>
+              <span className="sr-only">Auto-refresh interval</span>
+              <select
+                value={refreshMs}
+                onChange={(e) => setRefreshMs(Number(e.target.value))}
+                aria-label="Auto-refresh interval"
+                className="bg-transparent text-xs font-medium text-text focus:outline-none"
+              >
+                {QUOTA_REFRESH_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
 
           {/* Refresh all button */}
           <button
@@ -1190,7 +1245,10 @@ export default function ProviderLimits() {
               className={`min-w-0 ${isInactive ? "opacity-60" : ""}`}
             >
               <div className="px-3 py-2 border-b border-black/10 dark:border-white/10">
-                <div className="flex items-center justify-between gap-2">
+                {/* Ronde-35: header di-stack sampai lg (1024px) — di rentang
+                    640–1024px kluster tombol aksi terlalu lebar sehingga nama
+                    provider mampet jadi ±82px terpotong. */}
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-8 h-8 shrink-0 rounded-md flex items-center justify-center overflow-hidden">
                       <ProviderIcon
@@ -1260,7 +1318,7 @@ export default function ProviderLimits() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:shrink-0">
                     <QuotaRing pct={avgRemaining} />
 
                     {(isCodex || claudeReset) && (

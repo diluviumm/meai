@@ -81,6 +81,22 @@ function sortQuotas(quotas, sortMode) {
   return quotas;
 }
 
+function HideQuotaButton({ quota, onHideQuota, className }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onHideQuota(quota)}
+      className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-black/5 hover:text-text-primary dark:hover:bg-white/5 ${className || ""}`}
+      title="Hide this quota row"
+      aria-label={`Hide quota ${quota.name}`}
+    >
+      <span className="material-symbols-outlined text-[15px]">
+        visibility_off
+      </span>
+    </button>
+  );
+}
+
 /**
  * Quota Table Component - Table-based display for quota data
  */
@@ -163,17 +179,28 @@ export default function QuotaTable({
           const recurring = quota.recurring !== false;
           const countdownLabel = recurring ? `in ${countdown}` : `expires in ${countdown}`;
 
+          // ── Ronde-35: di layar sempit (360–414px) baris satu-baris bikin
+          // kolom progress bar mampet jadi 0px dan teks "expires in …"
+          // terpotong. Baris di-stack di bawah sm:, jadi ketiga kolom dapat
+          // lebar penuh dan tetap terbaca di semua ukuran device.
           return (
             <div
               key={`${quota.name}-${quota.index}`}
-              className={`flex items-center gap-2 border-b border-black/5 dark:border-white/5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors ${cellPad}`}
+              className={`flex flex-col gap-1.5 border-b border-black/5 dark:border-white/5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors sm:flex-row sm:items-center sm:gap-2 ${cellPad}`}
             >
               {/* Name */}
-              <div className="flex w-36 min-w-0 items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5 sm:w-36 sm:flex-none">
                 <span className="text-[10px] shrink-0">{colors.emoji}</span>
                 <span className={`${nameText} font-medium text-text-primary truncate`}>
                   {quota.name}
                 </span>
+                {hasHideAction && (
+                  <HideQuotaButton
+                    quota={quota}
+                    onHideQuota={onHideQuota}
+                    className="ml-auto sm:hidden"
+                  />
+                )}
               </div>
 
               {/* Progress + used/total */}
@@ -212,8 +239,9 @@ export default function QuotaTable({
                 </div>
               </div>
 
-              {/* Reset time — lebar tetap supaya track bar konsisten antar baris */}
-              <div className="w-28 shrink-0">
+              {/* Reset time — lebar tetap supaya track bar konsisten antar baris
+                  (di layar sempit lebar penuh, jadi "expires in …" tak terpotong) */}
+              <div className="min-w-0 sm:w-32 sm:shrink-0">
                 {countdown !== "-" || resetDisplay ? (
                   compact ? (
                     <div
@@ -241,19 +269,13 @@ export default function QuotaTable({
                 )}
               </div>
 
-              {/* Hide action */}
+              {/* Hide action (desktop — versi mobile menempel di baris nama) */}
               {hasHideAction && (
-                <button
-                  type="button"
-                  onClick={() => onHideQuota(quota)}
-                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-black/5 hover:text-text-primary dark:hover:bg-white/5"
-                  title="Hide this quota row"
-                  aria-label={`Hide quota ${quota.name}`}
-                >
-                  <span className="material-symbols-outlined text-[15px]">
-                    visibility_off
-                  </span>
-                </button>
+                <HideQuotaButton
+                  quota={quota}
+                  onHideQuota={onHideQuota}
+                  className="hidden sm:inline-flex"
+                />
               )}
             </div>
           );

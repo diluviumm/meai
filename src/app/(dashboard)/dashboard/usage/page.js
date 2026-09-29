@@ -1,9 +1,14 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { RequestLogger, CardSkeleton, SegmentedControl } from "@/shared/components";
-import UsageStats from "@/shared/components/UsageStats";
+import UsageStats, {
+  UsageViewControls,
+  REFRESH_STORAGE_KEY,
+  REFRESH_DEFAULT_MS,
+  defaultRange,
+} from "@/shared/components/UsageStats";
 import RequestDetailsTab from "./components/RequestDetailsTab";
 import BudgetBar from "./components/BudgetBar";
 
@@ -14,6 +19,8 @@ const PERIODS = [
   { value: "30d", label: "30D" },
   { value: "60d", label: "60D" },
   { value: "all", label: "All" },
+  // Ronde-35: rentang hari bebas — preset di atas tetap ada, tidak dihapus.
+  { value: "custom", label: "Custom" },
 ];
 
 export default function UsagePage() {
@@ -29,6 +36,37 @@ function UsageContent() {
   const router = useRouter();
 
   const [period, setPeriod] = useState("today");
+
+  // Ronde-35: rentang hari kustom + interval auto-refresh (satu sumber kebenaran
+  // untuk tab, chart, tabel, dan ekspor CSV).
+  const [range, setRange] = useState(defaultRange);
+  const [refreshMs, setRefreshMs] = useState(REFRESH_DEFAULT_MS);
+
+  // Interval terakhir dibaca setelah mount — localStorage tidak ada saat SSR,
+  // jadi membacanya di state awal akan memicu hydration mismatch. Update juga
+  // ditunda ke tick berikutnya supaya bukan setState sinkron dalam effect.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(REFRESH_STORAGE_KEY);
+        if (raw !== null) {
+          const saved = Number(raw);
+          if (Number.isFinite(saved) && saved >= 0) setRefreshMs(saved);
+        }
+      } catch {}
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const changeRefresh = (ms) => {
+    setRefreshMs(ms);
+    try { localStorage.setItem(REFRESH_STORAGE_KEY, String(ms)); } catch {}
+  };
+
+  const periodQuery =
+    period === "custom"
+      ? `period=custom&from=${range.from}&to=${range.to}`
+      : `period=${period}`;
 
   const tabFromUrl = searchParams.get("tab");
   const activeTab = tabFromUrl && ["overview", "logs", "details"].includes(tabFromUrl)
@@ -46,13 +84,13 @@ function UsageContent() {
   const exportCsv = async () => {
     try {
       const [chart, stats] = await Promise.all([
-        fetch(`/api/usage/chart?period=${period}`).then((r) => r.json()),
-        fetch(`/api/usage/stats?period=${period}`).then((r) => r.json()),
+        fetch(`/api/usage/chart?${periodQuery}`).then((r) => r.json()),
+        fetch(`/api/usage/stats?${periodQuery}`).then((r) => r.json()),
       ]);
       const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
       const num = (v) => Number(v || 0);
       const rows = [];
-      rows.push(["MeAI usage export", `period=${period}`, new Date().toISOString()].map(esc).join(","));
+      rows.push(["MeAI usage export", `period=${period === "custom" ? `${range.from}..${range.to}` : period}`, new Date().toISOString()].map(esc).join(","));
       rows.push("");
       rows.push(["Daily", "Requests", "Tokens", "Cost (USD)"].map(esc).join(","));
       for (const d of chart || []) rows.push([d.label, num(d.requests), num(d.tokens), num(d.cost).toFixed(6)].map(esc).join(","));
@@ -69,7 +107,7 @@ function UsageContent() {
       const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `meai-usage-${period}-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `meai-usage-${period === "custom" ? `${range.from}_${range.to}` : period}-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (err) {
@@ -127,9 +165,23 @@ function UsageContent() {
 
       {activeTab === "overview" && (
         <>
+          <UsageViewControls
+            period={period}
+            range={range}
+            onRangeChange={setRange}
+            refreshMs={refreshMs}
+            onRefreshChange={changeRefresh}
+          />
           <BudgetBar />
           <Suspense fallback={<CardSkeleton />}>
-            <UsageStats period={period} setPeriod={setPeriod} hidePeriodSelector />
+            <UsageStats
+              period={period}
+              setPeriod={setPeriod}
+              hidePeriodSelector
+              from={range.from}
+              to={range.to}
+              refreshMs={refreshMs}
+            />
           </Suspense>
         </>
       )}

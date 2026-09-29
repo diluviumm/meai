@@ -344,8 +344,26 @@ function loadDaysInRange(adapter, maxDays) {
   return adapter.all(`SELECT dateKey, data FROM usageDaily WHERE dateKey >= ? ORDER BY dateKey ASC`, [cutoffKey]);
 }
 
-export async function getUsageStats(period = "all") {
+// Ronde-35: rentang hari kustom (page usage) — dari/to sudah divalidasi
+// YYYY-MM-DD oleh API route, jadi aman dipasang langsung sebagai parameter.
+function loadDaysBetween(adapter, fromKey, toKey) {
+  return adapter.all(
+    `SELECT dateKey, data FROM usageDaily WHERE dateKey >= ? AND dateKey <= ? ORDER BY dateKey ASC`,
+    [fromKey, toKey],
+  );
+}
+
+function daysBetweenInclusive(fromKey, toKey) {
+  const a = new Date(`${fromKey}T00:00:00`);
+  const b = new Date(`${toKey}T00:00:00`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+  return Math.max(1, Math.round((b - a) / 86400000) + 1);
+}
+
+export async function getUsageStats(period = "all", opts = {}) {
   const db = await getAdapter();
+  const customFrom = typeof opts.from === "string" ? opts.from : null;
+  const customTo = typeof opts.to === "string" ? opts.to : null;
 
   const [{ getProviderConnections }, { getApiKeys }, { getProviderNodes }] = await Promise.all([
     import("./connectionsRepo.js"),
@@ -450,8 +468,17 @@ export async function getUsageStats(period = "all") {
 
   if (useDailySummary) {
     const periodDays = { "7d": 7, "30d": 30, "60d": 60 };
-    const maxDays = periodDays[period] || null;
-    const dayRows = loadDaysInRange(db, maxDays);
+    let maxDays = periodDays[period] || null;
+    let dayRows;
+    if (period === "custom" && customFrom && customTo) {
+      // Ronde-35: rentang hari bebas diatur pengguna — baca tepat di rentang
+      // tersebut, dan panjang rentangnya dipakai agar jendela overlay lastUsed
+      // ikut menjepit (bukan jatuh ke cabang 24h/today di bawah).
+      dayRows = loadDaysBetween(db, customFrom, customTo);
+      maxDays = daysBetweenInclusive(customFrom, customTo) || maxDays;
+    } else {
+      dayRows = loadDaysInRange(db, maxDays);
+    }
 
     for (const dr of dayRows) {
       const dateKey = dr.dateKey;
@@ -670,9 +697,11 @@ export async function getUsageStats(period = "all") {
   return stats;
 }
 
-export async function getChartData(period = "7d") {
+export async function getChartData(period = "7d", opts = {}) {
   const db = await getAdapter();
   const now = Date.now();
+  const customFrom = typeof opts.from === "string" ? opts.from : null;
+  const customTo = typeof opts.to === "string" ? opts.to : null;
 
   if (period === "today") {
     const bucketCount = 24;
@@ -724,6 +753,51 @@ export async function getChartData(period = "7d") {
   }
 
   const labelFn = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  // Ronde-35: rentang hari bebas diatur di page usage.
+  // Bucket per hari bila ≤ 90 hari; di atas itu digabung per N hari supaya
+  // label sumbu-x tetap terbaca (maksimal ±90 label).
+  if (period === "custom" && customFrom && customTo) {
+    const start = new Date(`${customFrom}T00:00:00`);
+    const end = new Date(`${customTo}T00:00:00`);
+    const spanDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
+    const bucketDays = spanDays <= 90 ? 1 : Math.ceil(spanDays / 90);
+
+    const dayMap = {};
+    for (const r of loadDaysBetween(db, customFrom, customTo)) {
+      dayMap[r.dateKey] = parseJson(r.data, {});
+    }
+
+    const keyOf = (d) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+    const buckets = [];
+    for (let i = 0; i < spanDays; i += bucketDays) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      const len = Math.min(bucketDays, spanDays - i);
+      let tokens = 0;
+      let cost = 0;
+      let requests = 0;
+      for (let j = 0; j < len; j++) {
+        const dd = new Date(start);
+        dd.setDate(dd.getDate() + i + j);
+        const day = dayMap[keyOf(dd)];
+        if (!day) continue;
+        tokens += (day.promptTokens || 0) + (day.completionTokens || 0);
+        cost += day.cost || 0;
+        requests += day.requests || 0;
+      }
+      let label = labelFn(d);
+      if (len > 1) {
+        const dEnd = new Date(start);
+        dEnd.setDate(dEnd.getDate() + i + len - 1);
+        label = `${labelFn(d)} – ${labelFn(dEnd)}`;
+      }
+      buckets.push({ label, tokens, cost, requests });
+    }
+    return buckets;
+  }
 
   if (period === "all") {
     const dayRows = loadDaysInRange(db, null);

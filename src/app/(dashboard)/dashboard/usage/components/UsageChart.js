@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import PropTypes from "prop-types";
 import {
   AreaChart,
@@ -34,15 +34,31 @@ const VIEW_CONFIG = {
   cost:     { dataKey: "cost",     color: "#f59e0b", gradId: "gradCost",     formatter: fmtCost,     label: "Cost" },
 };
 
-export default function UsageChart({ period = "7d" }) {
+export default function UsageChart({
+  period = "7d",
+  from = "",
+  to = "",
+  refreshToken = 0,
+}) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("tokens");
 
+  // Ronde-35: rentang kustom (from/to) + token auto-refresh ikut ke query,
+  // supaya grafik selalu sinkron dengan tab periode di atasnya.
+  const queryKey =
+    period === "custom"
+      ? `period=custom&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+      : `period=${period}`;
+  const lastQueryRef = useRef("");
+
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    const queryChanged = lastQueryRef.current !== queryKey;
+    // Polling saat tab tersembunyi → tidak membuang request
+    if (!queryChanged && document.hidden) return;
+    if (queryChanged) setLoading(true);
     try {
-      const res = await fetch(`/api/usage/chart?period=${period}`);
+      const res = await fetch(`/api/usage/chart?${queryKey}`);
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -50,13 +66,14 @@ export default function UsageChart({ period = "7d" }) {
     } catch (e) {
       console.error("Failed to fetch chart data:", e);
     } finally {
-      setLoading(false);
+      if (queryChanged) setLoading(false);
+      lastQueryRef.current = queryKey;
     }
-  }, [period]);
+  }, [queryKey]);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, refreshToken]);
 
   const cfg = VIEW_CONFIG[viewMode];
   const hasData = data.some((d) => (d[cfg.dataKey] || 0) > 0);
@@ -142,4 +159,7 @@ export default function UsageChart({ period = "7d" }) {
 
 UsageChart.propTypes = {
   period: PropTypes.string,
+  from: PropTypes.string,
+  to: PropTypes.string,
+  refreshToken: PropTypes.number,
 };

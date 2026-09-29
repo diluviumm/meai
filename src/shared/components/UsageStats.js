@@ -203,9 +203,44 @@ const PERIODS = [
   { value: "30d", label: "30D" },
   { value: "60d", label: "60D" },
   { value: "all", label: "All" },
+  // Ronde-35: rentang hari bebas — opsi lama (Today…All) tidak dihapus,
+  // "Custom" hanya menambah satu pilihan lagi.
+  { value: "custom", label: "Custom" },
 ];
 
-export default function UsageStats({ period: periodProp, setPeriod: setPeriodProp, hidePeriodSelector = false } = {}) {
+// Auto-refresh page usage (ronde-35): 0 = mati. Default 3 detik sesuai
+// permintaan "2-3 atau 5 detik" tanpa memaksa polling secepat mungkin.
+const REFRESH_OPTIONS = [
+  { value: 0, label: "Off" },
+  { value: 2000, label: "2s" },
+  { value: 3000, label: "3s" },
+  { value: 5000, label: "5s" },
+  { value: 10000, label: "10s" },
+  { value: 30000, label: "30s" },
+];
+const DEFAULT_REFRESH_MS = 3000;
+export const REFRESH_STORAGE_KEY = "usageAutoRefreshMs";
+
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function defaultRange() {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - 6);
+  return { from: isoDate(from), to: isoDate(to) };
+}
+export { defaultRange, DEFAULT_REFRESH_MS as REFRESH_DEFAULT_MS };
+
+export default function UsageStats({
+  period: periodProp,
+  setPeriod: setPeriodProp,
+  hidePeriodSelector = false,
+  from: fromProp,
+  to: toProp,
+  refreshMs: refreshMsProp,
+} = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -223,6 +258,29 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
   const hasLoadedStats = useRef(false);
   const period = periodProp ?? periodLocal;
   const setPeriod = setPeriodProp ?? setPeriodLocal;
+
+  // ── Ronde-35: rentang hari kustom + auto-refresh ──────────────────────────
+  // State rentang/interval sengaja diangkat ke halaman /dashboard/usage
+  // (satu-satunya konsumen) supaya kontrol UI dan ekspor CSV memakai nilai
+  // yang sama persis. Fallback di bawah hanya untuk pemakaian mandiri.
+  const [{ from: internalFrom, to: internalTo }] = useState(defaultRange);
+  const customFrom = fromProp || internalFrom;
+  const customTo = toProp || internalTo;
+  const autoRefreshMs = refreshMsProp ?? DEFAULT_REFRESH_MS;
+  const [tick, setTick] = useState(0);
+  const lastQueryRef = useRef("");
+
+  // Ticker auto-refresh — saat tab tersembunyi polling dilewati di efek fetch,
+  // jadi tidak membuang request untuk data yang tidak sedang dilihat.
+  useEffect(() => {
+    if (autoRefreshMs <= 0) return undefined;
+    const id = setInterval(() => setTick((t) => t + 1), autoRefreshMs);
+    return () => clearInterval(id);
+  }, [autoRefreshMs]);
+
+  const queryKey = period === "custom"
+    ? `period=custom&from=${encodeURIComponent(customFrom)}&to=${encodeURIComponent(customTo)}`
+    : `period=${period}`;
 
   // Fetch connected providers once, deduplicate by provider type
   // Always include noAuth free providers (e.g. opencode) regardless of connections
@@ -256,19 +314,27 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
       .catch(() => {});
   }, []);
 
-  // Fetch filtered stats via REST when period changes
+  // Fetch filtered stats via REST when period / custom range changes,
+  // plus periodic auto-refresh (ronde-35).
   useEffect(() => {
-    // First load: show full spinner; subsequent: show subtle fetching indicator
+    const queryChanged = lastQueryRef.current !== queryKey;
+
+    // Polling berkala saat tab tersembunyi → lewati (tak ada yang melihatnya);
+    // ganti periode/rentang tetap dijalankan agar data siap saat kembali.
+    if (!queryChanged && document.hidden) return undefined;
+
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
       setLoading(true);
-    } else {
+    } else if (queryChanged) {
       setFetching(true);
     }
 
-    fetch(`/api/usage/stats?period=${period}`)
-      .then((r) => r.ok ? r.json() : null)
+    let cancelled = false;
+    fetch(`/api/usage/stats?${queryKey}`)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
+        if (cancelled) return;
         if (data) {
           hasLoadedStats.current = true;
           setStats((prev) => ({ ...prev, ...data }));
@@ -276,10 +342,16 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
       })
       .catch(() => {})
       .finally(() => {
+        if (cancelled) return;
         setLoading(false);
-        setFetching(false);
+        if (queryChanged) setFetching(false);
+        lastQueryRef.current = queryKey;
       });
-  }, [period]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [period, queryKey, tick]);
 
   // SSE connection - real-time updates for activeRequests + recentRequests only
   useEffect(() => {
@@ -449,9 +521,13 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
   return (
     <div className="flex min-w-0 flex-col gap-6">
       {/* Period selector (hidden when controlled by parent) */}
+      {/* Period selector — dipakai bila komponen ini mengontrol periode sendiri.
+          Di /dashboard/usage halaman inilah yang memegang selector
+          (hidePeriodSelector), jadi kontrol rentang/auto-refresh ada di
+          UsageViewControls. */}
       {!hidePeriodSelector && (
-        <div className="flex w-full items-center gap-2 sm:w-auto sm:self-end">
-          <div className="grid flex-1 grid-cols-6 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1 sm:flex sm:flex-none">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:self-end">
+          <div className="grid min-w-0 flex-1 grid-cols-4 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1 sm:flex sm:flex-none">
             {PERIODS.map((p) => (
               <button
                 key={p.value}
@@ -485,8 +561,17 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
         </div>
       )}
 
-      {/* Token / Cost chart - sync period */}
-      {loading ? spinner : <UsageChart period={period} />}
+      {/* Token / Cost chart - sync period + range + auto-refresh (ronde-35) */}
+      {loading ? (
+        spinner
+      ) : (
+        <UsageChart
+          period={period}
+          from={customFrom}
+          to={customTo}
+          refreshToken={tick}
+        />
+      )}
 
       {/* Provider and model breakdown charts */}
       {!loading && (stats.byProvider || stats.byModel) && (
@@ -542,6 +627,83 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
           />
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Ronde-35: kontrol rentang hari + auto-refresh untuk page usage ──────────
+// Halaman /dashboard/usage memegang selector periode (hidePeriodSelector), jadi
+// kedua kontrol ini dirender di sana — satu-satunya sumber kebenaran untuk
+// rentang & interval, sehingga chart, tabel, dan ekspor CSV selalu sinkron.
+export function UsageViewControls({
+  period,
+  range,
+  onRangeChange,
+  refreshMs,
+  onRefreshChange,
+}) {
+  const inputCls =
+    "rounded-md border border-border bg-background px-2 py-1 text-xs text-text focus:border-primary focus:outline-none";
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border bg-bg-subtle px-3 py-2">
+      {period === "custom" ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+          <span className="font-medium text-text-muted">Date range</span>
+          <label className="flex items-center gap-1.5 text-text-muted">
+            From
+            <input
+              type="date"
+              value={range.from}
+              max={range.to}
+              aria-label="Start date"
+              onChange={(e) => e.target.value && onRangeChange({ ...range, from: e.target.value })}
+              className={inputCls}
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-text-muted">
+            To
+            <input
+              type="date"
+              value={range.to}
+              min={range.from}
+              aria-label="End date"
+              onChange={(e) => e.target.value && onRangeChange({ ...range, to: e.target.value })}
+              className={inputCls}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => onRangeChange(defaultRange())}
+            className="rounded-md border border-border px-2 py-1 text-xs text-text-muted transition-colors hover:bg-bg-hover hover:text-text"
+          >
+            Last 7 days
+          </button>
+        </div>
+      ) : (
+        <span className="min-w-0 text-xs text-text-muted">
+          Fixed period. Switch to <span className="font-medium">Custom</span> to pick any
+          start/end date (the presets above stay available).
+        </span>
+      )}
+
+      <label className="ml-auto flex shrink-0 items-center gap-1.5 text-xs text-text-muted">
+        <span className="material-symbols-outlined text-[14px]" aria-hidden="true">
+          autorenew
+        </span>
+        <span>Auto-refresh</span>
+        <select
+          value={refreshMs}
+          onChange={(e) => onRefreshChange(Number(e.target.value))}
+          aria-label="Auto-refresh interval"
+          title="Refresh usage data automatically at the selected interval"
+          className={`${inputCls} font-medium`}
+        >
+          {REFRESH_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }

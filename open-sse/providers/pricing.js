@@ -289,6 +289,41 @@ export const PROVIDER_PRICING = {
     "z-ai/glm-5.2": { input: 1.4, output: 4.4, cached: 0.26, reasoning: 4.4 },
     "z-ai/glm-5.3-free": { input: 0, output: 0, cached: 0, reasoning: 0 },
   },
+
+  // ── Fork MeAI: opencode-go ────────────────────────────────────────────────
+  // Tanpa blok ini getPricingForModel("opencode-go", …) → null → kolom Cost
+  // selalu $0.00 padahal ±5.000 request lewat provider ini (mimo-v2.5,
+  // mimo-v2.6-flash). opencode-go berlangganan bulanan, bukan per-token, jadi
+  // cost = estimasi harga setara publik. Angka mengikuti tier sejenis yang
+  // SUDAH ada di repo ini (tokenrouter: xiaomi/mimo-*, nvidia/nemotron-*,
+  // tencent/hy3-preview) supaya tidak ada tarif karangan. Nilai bisa dikustom
+  // via Settings → Pricing (POST /api/pricing) tanpa menyentuh kode.
+  "opencode-go": {
+    // tier standar — mengikuti xiaomi/mimo-v2.5 { 0.4 / 2.0 }
+    "mimo-v2.5":            { input: 0.4,  output: 2.0,  cached: 0.08,  reasoning: 2.0, cache_creation: 0.4 },
+    "mimo-v2.6-flash":      { input: 0.4,  output: 2.0,  cached: 0.08,  reasoning: 2.0, cache_creation: 0.4 },
+    // tier pro — mengikuti xiaomi/mimo-v2.5-pro { 1 / 3 }
+    "mimo-v2.6-pro":        { input: 1.0,  output: 3.0,  cached: 0.2,   reasoning: 3.0, cache_creation: 1.0 },
+    // mengikuti nvidia/nemotron-3-super-120b-a12b { 0.3 / 0.9 }
+    "nemotron-3-super":     { input: 0.3,  output: 0.9,  cached: 0.1,   reasoning: 0.9, cache_creation: 0.3 },
+    // mengikuti tencent/hy3-preview { 0.066 / 0.26 }
+    "hy3":                  { input: 0.066, output: 0.26, cached: 0.029, reasoning: 0.26, cache_creation: 0.066 },
+    // tier nano/mini/base — rasio OpenAI 1/25 dan 1/5 dari base gpt-5 (1.25/10)
+    "gpt-6-nano":           { input: 0.05, output: 0.4,  cached: 0.005, reasoning: 0.4,  cache_creation: 0.05 },
+    "gpt-6-mini":           { input: 0.25, output: 2.0,  cached: 0.025, reasoning: 2.0,  cache_creation: 0.25 },
+    "gpt-6":                { input: 1.25, output: 10.0, cached: 0.125, reasoning: 10.0, cache_creation: 1.25 },
+    "gpt-6-luna":           { input: 1.25, output: 10.0, cached: 0.125, reasoning: 10.0, cache_creation: 1.25 },
+    // tier gratis / kontributor — tetap $0 (bukan lupa, memang nol)
+    "muse-spark-1.2-contributor": { input: 0, output: 0, cached: 0, reasoning: 0, cache_creation: 0 },
+    "space-bunny-free":     { input: 0, output: 0, cached: 0, reasoning: 0, cache_creation: 0 },
+    "longcat-lite-chat":    { input: 0, output: 0, cached: 0, reasoning: 0, cache_creation: 0 },
+    "longcat-chat":         { input: 0, output: 0, cached: 0, reasoning: 0, cache_creation: 0 },
+    "longcat-embed":        { input: 0, output: 0, cached: 0, reasoning: 0, cache_creation: 0 },
+    "longcat-embed-thinking": { input: 0, output: 0, cached: 0, reasoning: 0, cache_creation: 0 },
+    // eksplisit (sebenarnya sudah tercakup pola deepseek-v*) supaya tampil di UI
+    "deepseek-v4-flash":    { input: 0.14, output: 0.28, cached: 0.0028, reasoning: 0.28, cache_creation: 0.14 },
+    "deepseek-v4.1-flash":  { input: 0.14, output: 0.28, cached: 0.0028, reasoning: 0.28, cache_creation: 0.14 },
+  },
 };
 
 /**
@@ -369,6 +404,17 @@ export const PATTERN_PRICING = [
   // --- Grok ---
   { pattern: "grok-code-*",     pricing: { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  } },
   { pattern: "grok-*",          pricing: { input: 0.50,  output: 2.00,  cached: 0.25,  reasoning: 3.00,   cache_creation: 0.50  } },
+  // ── Fork MeAI: keluarga model yang sebelumnya tidak kena pola mana pun →
+  // getPricingForModel() null → cost $0.00. Tarif mengikuti entri tier sejenis
+  // yang sudah ada di file ini / MODEL_PRICING (lihat catatan PROVIDER_PRICING
+  // "opencode-go"); model gratis/tanpa tarif dikunci $0, bukan dibiarkan null.
+  { pattern: "mimo-*",         pricing: { input: 0.40,  output: 2.00,  cached: 0.08,  reasoning: 2.00,   cache_creation: 0.40  } },
+  { pattern: "nemotron-*",     pricing: { input: 0.30,  output: 0.90,  cached: 0.10,  reasoning: 0.90,   cache_creation: 0.30  } },
+  { pattern: "hy3*",           pricing: { input: 0.066, output: 0.26,  cached: 0.029, reasoning: 0.26,   cache_creation: 0.066 } },
+  { pattern: "gpt-6*",         pricing: { input: 1.25,  output: 10.00, cached: 0.125, reasoning: 10.00,  cache_creation: 1.25  } },
+  { pattern: "muse-*",         pricing: { input: 0,     output: 0,     cached: 0,     reasoning: 0,      cache_creation: 0     } },
+  { pattern: "longcat-*",      pricing: { input: 0,     output: 0,     cached: 0,     reasoning: 0,      cache_creation: 0     } },
+  { pattern: "space-bunny-*",  pricing: { input: 0,     output: 0,     cached: 0,     reasoning: 0,      cache_creation: 0     } },
 ];
 
 /**

@@ -32,6 +32,52 @@ const AUTO_PING_SETTINGS_KEYS = {
   codex: "codexAutoPing",
 };
 
+// Ronde-35: label lama cuma "Thinking: High" — tak menjelaskan apa artinya,
+// kapan dipakai, atau konsekuensinya. Tiap level kini membawa arti + hint
+// yang ditampilkan langsung di bawah picker (bukan cuma tooltip title).
+const THINKING_LEVEL_INFO = {
+  auto: {
+    label: "Auto — provider decides",
+    hint: "No (level) suffix is appended; the provider picks reasoning effort per request.",
+  },
+  none: {
+    label: "None — no reasoning",
+    hint: "Appends (none): the model replies without a reasoning trace — fastest and cheapest.",
+  },
+  thinking: {
+    label: "Thinking — on",
+    hint: "Appends (thinking): reasoning switched on for providers that only expose on/off.",
+  },
+  minimal: {
+    label: "Minimal — smallest budget",
+    hint: "Appends (minimal): the smallest reasoning budget the model accepts.",
+  },
+  low: {
+    label: "Low — fastest",
+    hint: "Appends (low): least thinking. Best for simple or latency-sensitive requests.",
+  },
+  medium: {
+    label: "Medium — balanced",
+    hint: "Appends (medium): balanced speed vs depth — a safe everyday level.",
+  },
+  high: {
+    label: "High — deeper",
+    hint: "Appends (high): deeper reasoning. Slower and more expensive per request.",
+  },
+  xhigh: {
+    label: "X-High — extended",
+    hint: "Appends (xhigh): extended reasoning for hard multi-step problems.",
+  },
+  max: {
+    label: "Max — strongest",
+    hint: "Appends (max): maximum thinking budget. Slowest and costliest per request.",
+  },
+  ultra: {
+    label: "Ultra — above Max",
+    hint: "Appends (ultra): reasoning tier above Max (only some GPT-5.6/6 models expose it).",
+  },
+};
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -202,6 +248,14 @@ export default function ProviderDetailPage() {
     }
     return set.size ? ["auto", ...[...set]] : null;
   })();
+  // Ronde-35: hitung model yang benar-benar mendukung level terpilih —
+  // sebelumnya pengguna hanya menebak apakah pilihannya berlaku atau tidak.
+  const thinkingTotalCount = models.length + kiloFreeModels.length;
+  const thinkingSupportCount =
+    thinkingMode === "auto"
+      ? thinkingTotalCount
+      : models.filter((m) => resolveThinkingSuffix(m.id)).length +
+        kiloFreeModels.filter((m) => resolveThinkingSuffix(m.id)).length;
   const providerDisplayAlias = isCompatible
     ? (providerNode?.prefix || providerId)
     : providerAlias;
@@ -1756,21 +1810,44 @@ export default function ProviderDetailPage() {
       {/* Models */}
       <Card>
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <h2 className="text-lg font-semibold">
               {"Available Models"}
             </h2>
             {providerThinkingLevels && (
-              <select
-                value={thinkingMode}
-                onChange={(e) => handleThinkingModeChange(e.target.value)}
-                title="Appends (level) suffix to copied model names"
-                className="rounded-md border border-border bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none"
-              >
-                {providerThinkingLevels.map((opt) => (
-                  <option key={opt} value={opt}>{`Thinking: ${opt.charAt(0).toUpperCase() + opt.slice(1)}`}</option>
-                ))}
-              </select>
+              <div className="flex min-w-0 flex-col gap-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <label
+                    htmlFor="thinking-level"
+                    className="shrink-0 text-xs text-text-muted"
+                  >
+                    Thinking level
+                  </label>
+                  <select
+                    id="thinking-level"
+                    value={thinkingMode}
+                    onChange={(e) => handleThinkingModeChange(e.target.value)}
+                    title="Adds a (level) suffix to every model id you copy from this page"
+                    className="max-w-full rounded-md border border-border bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none"
+                  >
+                    {providerThinkingLevels.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {THINKING_LEVEL_INFO[opt]?.label || `Level: ${opt}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-[11px] leading-snug text-text-muted">
+                  {THINKING_LEVEL_INFO[thinkingMode]?.hint ||
+                    "Adds a (level) suffix to model ids copied from this page."}
+                  {" "}
+                  <span className="text-text-muted/80">
+                    {thinkingMode === "auto"
+                      ? "Model ids are copied unchanged while Auto is selected."
+                      : `${thinkingSupportCount} of ${thinkingTotalCount} model${thinkingTotalCount === 1 ? "" : "s"} support this level.`}
+                  </span>
+                </p>
+              </div>
             )}
           </div>
           {!isCompatible && (() => {

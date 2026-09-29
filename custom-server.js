@@ -73,6 +73,18 @@ http.createServer = (...args) => {
     return handler(req, res);
   };
   const server = origCreate(...rest, wrapped);
+  // Ronde-35: Node default keepAliveTimeout = 5 detik. Cloudflared (Cloudflare
+  // Tunnel) memegang koneksi origin lebih lama, jadi setelah tab idle diam
+  // mereka memakai socket yang sudah ditutup Node → response korup yang di
+  // browser bisa terbaca sebagai "HTTP 505" pada refresh quota. 75 detik >
+  // idle timeout proxy sehingga proxy-lah yang menutup duluan, bukan Node.
+  const keepAliveMs = Number(process.env.KEEP_ALIVE_TIMEOUT_MS || 75000);
+  if (Number.isFinite(keepAliveMs) && keepAliveMs > 0) {
+    server.keepAliveTimeout = keepAliveMs;
+    if (typeof server.headersTimeout === "number" && server.headersTimeout <= keepAliveMs) {
+      server.headersTimeout = keepAliveMs + 10000;
+    }
+  }
   server.once("listening", () => {
     startBackgroundTokenRefreshFromCustomServer();
   });
