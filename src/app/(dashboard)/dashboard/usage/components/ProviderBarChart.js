@@ -54,9 +54,10 @@ export default function ProviderBarChart({ byProvider }) {
 
   return (
     <Card className="flex min-w-0 flex-col gap-3 p-3 sm:p-4">
-      <div className="flex items-center justify-between gap-2">
+      {/* flex-wrap: di 360px baris judul + 3 tombol metrik tidak muat sejajar */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-semibold text-text-muted uppercase tracking-wide">By Provider</span>
-        <div className="grid grid-cols-3 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1">
+        <div className="grid grid-cols-3 shrink-0 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1">
           <button
             onClick={() => setViewMode("tokens")}
             className={`px-2.5 py-0.5 rounded-md text-xs font-medium transition-colors ${viewMode === "tokens" ? "bg-primary text-[#171232] shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
