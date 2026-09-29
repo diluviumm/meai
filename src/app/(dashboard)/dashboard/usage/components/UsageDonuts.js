@@ -15,15 +15,25 @@ const fmt = (n) => {
   return String(v);
 };
 
-const centerLabel = (total, caption) => (
+// Ronde-37: formatter utk donut Cost — nilai uang harus selalu bertanda $.
+const fmtMoney = (n) => {
+  const v = Number(n) || 0;
+  if (v >= 1000) return `$${(v / 1000).toFixed(1)}K`;
+  if (v >= 1) return `$${v.toFixed(2)}`;
+  if (v > 0) return `$${v.toFixed(4)}`;
+  return "$0";
+};
+
+const centerLabel = (total, caption, format = fmt) => (
   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-    <span className="text-lg font-bold text-text-main">{fmt(total)}</span>
+    <span className="text-lg font-bold text-text-main">{format(total)}</span>
     <span className="text-[10px] uppercase tracking-[0.14em] text-text-subtle">{caption}</span>
   </div>
 );
 
-function Donut({ data, colors, caption, total }) {
+function Donut({ data, colors, caption, total, format }) {
   const shown = data.filter((d) => d.value > 0);
+  const fmtVal = format || fmt;
   if (!shown.length) {
     return (
       <div className="flex min-h-[170px] flex-1 flex-col items-center justify-center gap-1 rounded-xl border border-border-subtle bg-bg/40">
@@ -48,11 +58,11 @@ function Donut({ data, colors, caption, total }) {
             <Tooltip
               contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 10, fontSize: 12 }}
               itemStyle={{ color: "var(--color-text-main)" }}
-              formatter={(v, n) => [fmt(v), n]}
+              formatter={(v, n) => [fmtVal(v), n]}
             />
           </PieChart>
         </ResponsiveContainer>
-        {centerLabel(total, caption)}
+        {centerLabel(total, caption, fmtVal)}
       </div>
       <ul className="relative z-10 flex w-full flex-wrap justify-center gap-x-3 gap-y-0.5 px-1">
         {shown.map((d, i) => (
@@ -71,9 +81,12 @@ Donut.propTypes = {
   colors: PropTypes.array.isRequired,
   caption: PropTypes.string.isRequired,
   total: PropTypes.number,
+  format: PropTypes.func,
 };
 
-/** Donat visualisasi ronde-26: distribusi token (in/out/cached) + request per model */
+/** Donat visualisasi ronde-26: distribusi token (in/out/cached) + request per model
+ *  Ronde-37: + donut COST per provider — selama ini kartu ini hanya menunjukkan
+ *  token & model, padahal yang paling sering ditanya adalah "biaya dari mana". */
 export default function UsageDonuts({ stats }) {
   const tokenFlow = useMemo(
     () => [
@@ -96,18 +109,35 @@ export default function UsageDonuts({ stats }) {
   const totalTokens = (stats?.totalPromptTokens || 0) + (stats?.totalCompletionTokens || 0);
   const totalModelTokens = byModel.reduce((s, d) => s + d.value, 0);
 
+  // Ronde-37: biaya per provider (data sudah ada di stats.byProvider.cost)
+  const byCost = useMemo(() => {
+    const src = stats?.byProvider || {};
+    return Object.entries(src)
+      .map(([id, d]) => ({ name: id, value: d.cost || 0 }))
+      .filter((d) => d.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [stats]);
+  const totalCost = byCost.reduce((s, d) => s + d.value, 0);
+
   return (
     <Card padding="sm" className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center gap-2">
         <span className="material-symbols-outlined text-[18px] text-primary">donut_small</span>
         <div>
           <h3 className="text-sm font-semibold text-text-main">Distribusi</h3>
-          <p className="text-xs text-text-muted">Aliran token &amp; model teratas</p>
+          <p className="text-xs text-text-muted">Token, model &amp; biaya per provider</p>
         </div>
       </div>
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
         <Donut data={tokenFlow} colors={TOKEN_COLORS} caption="token" total={totalTokens} />
         <Donut data={byModel} colors={MODEL_COLORS} caption="per model" total={totalModelTokens} />
+        <Donut
+          data={byCost}
+          colors={[MODEL_COLORS[0], MODEL_COLORS[3], MODEL_COLORS[2], MODEL_COLORS[4], MODEL_COLORS[1]]}
+          caption="cost"
+          total={totalCost}
+          format={fmtMoney}
+        />
       </div>
     </Card>
   );

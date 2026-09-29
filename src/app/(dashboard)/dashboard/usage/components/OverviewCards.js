@@ -10,6 +10,19 @@ const fmtCost = (n) => {
   return `$${v >= 0.01 ? v.toFixed(2) : v > 0 ? v.toFixed(4) : "0.00"}`;
 };
 
+// Ronde-37: angka ringkas utk caption — 44.355.020 jauh lebih cepat dibaca
+// sebagai "44.4M" ketika dipakai sebagai keterangan, bukan sebagai nilai utama.
+const fmtCompact = (n) => {
+  const v = Number(n) || 0;
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
+  return String(v);
+};
+
+/** jumlah selama 10 menit terakhir (dari sparkline) */
+const sum10 = (arr) => (arr || []).reduce((a, b) => a + (Number(b) || 0), 0);
+
 /** Sparkline mini (10 titik menit terakhir) + dot nilai akhir — ronde-28 */
 function Spark({ series, color }) {
   const geom = useMemo(() => {
@@ -103,7 +116,19 @@ export default function OverviewCards({ stats }) {
     out: last.map((d) => d.completionTokens || 0),
     cost: last.map((d) => d.cost || 0),
   };
-  const last10Req = series.req.reduce((a, b) => a + b, 0);
+  const last10Req = sum10(series.req);
+  const last10Inp = sum10(series.inp);
+  const last10Out = sum10(series.out);
+  const last10Cached = sum10(series.cached);
+
+  // Ronde-37: tiap kartu wajib punya caption yang BERMAKNA.
+  // Sebelumnya dua kartu cuma berbunyi "10-min sparkline" (tidak menjelaskan
+  // apa pun) dan kartu Cached tidak menunjukkan seberapa besar hit rate-nya.
+  const hitRate =
+    stats.totalPromptTokens > 0
+      ? Math.round((stats.totalCachedTokens / stats.totalPromptTokens) * 100)
+      : null;
+  const perReq = stats.totalRequests > 0 ? stats.totalCost / stats.totalRequests : 0;
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:gap-4">
@@ -114,7 +139,7 @@ export default function OverviewCards({ stats }) {
         title={fmt(stats.totalRequests)}
         series={series.req}
         sparkColor="#8b7ce8"
-        caption={`+${last10Req} in last 10 min`}
+        caption={`+${fmtCompact(last10Req)} in last 10 min`}
       />
       <KpiCard
         label="Total Input Tokens"
@@ -122,15 +147,15 @@ export default function OverviewCards({ stats }) {
         colorClass="text-primary"
         title={fmt(stats.totalPromptTokens)}
         series={series.inp}
-        caption="10-min sparkline"
+        caption={`+${fmtCompact(last10Inp)} in 10 min`}
       />
       <KpiCard
         label="Cached Tokens"
         value={fmt(stats.totalCachedTokens)}
         colorClass="text-info"
-        title={fmt(stats.totalCachedTokens)}
+        title={`${fmt(stats.totalCachedTokens)} (${hitRate ?? 0}% dari input)`}
         series={series.cached}
-        caption="cache hits (10 min)"
+        caption={hitRate === null ? "cache hits" : `${hitRate}% hit rate · +${fmtCompact(last10Cached)} in 10 min`}
       />
       <KpiCard
         label="Output Tokens"
@@ -138,15 +163,15 @@ export default function OverviewCards({ stats }) {
         colorClass="text-success"
         title={fmt(stats.totalCompletionTokens)}
         series={series.out}
-        caption="10-min sparkline"
+        caption={`+${fmtCompact(last10Out)} in 10 min`}
       />
       <KpiCard
         label="Est. Cost"
         value={`~${fmtCost(stats.totalCost)}`}
         colorClass="text-warning"
-        title={`~${fmtCost(stats.totalCost)}`}
+        title={`~${fmtCost(stats.totalCost)} · ${fmt(stats.totalRequests)} request`}
         series={series.cost}
-        caption="Estimate, not a bill"
+        caption={`~$${perReq.toFixed(4)} / request`}
       />
     </div>
   );

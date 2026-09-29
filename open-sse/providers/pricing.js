@@ -408,11 +408,15 @@ export const PATTERN_PRICING = [
   // getPricingForModel() null → cost $0.00. Tarif mengikuti entri tier sejenis
   // yang sudah ada di file ini / MODEL_PRICING (lihat catatan PROVIDER_PRICING
   // "opencode-go"); model gratis/tanpa tarif dikunci $0, bukan dibiarkan null.
+  //
+  // Ronde-37: pola `muse-*` DIHAPUS — test upstream cline-free-tier-models
+  // mengharuskan getPricingForModel("cline", "meta/muse-spark-…") tetap null
+  // ("paid twin" sengaja tidak diberi tarif). Kebutuhan opencode-go sudah
+  // tercakup oleh PROVIDER_PRICING["opencode-go"]["muse-spark-1.2-contributor"].
   { pattern: "mimo-*",         pricing: { input: 0.40,  output: 2.00,  cached: 0.08,  reasoning: 2.00,   cache_creation: 0.40  } },
   { pattern: "nemotron-*",     pricing: { input: 0.30,  output: 0.90,  cached: 0.10,  reasoning: 0.90,   cache_creation: 0.30  } },
   { pattern: "hy3*",           pricing: { input: 0.066, output: 0.26,  cached: 0.029, reasoning: 0.26,   cache_creation: 0.066 } },
   { pattern: "gpt-6*",         pricing: { input: 1.25,  output: 10.00, cached: 0.125, reasoning: 10.00,  cache_creation: 1.25  } },
-  { pattern: "muse-*",         pricing: { input: 0,     output: 0,     cached: 0,     reasoning: 0,      cache_creation: 0     } },
   { pattern: "longcat-*",      pricing: { input: 0,     output: 0,     cached: 0,     reasoning: 0,      cache_creation: 0     } },
   { pattern: "space-bunny-*",  pricing: { input: 0,     output: 0,     cached: 0,     reasoning: 0,      cache_creation: 0     } },
 ];
