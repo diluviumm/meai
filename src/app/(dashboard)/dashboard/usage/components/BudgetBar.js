@@ -9,27 +9,52 @@ import Card from "@/shared/components/Card";
  * + peringatan saat lewat. Setting disimpan di settings.costBudgetDaily (USD).
  * Mandiri: fetch sendiri settings + stats hari ini (tanpa prop drilling).
  */
-export default function BudgetBar() {
+export default function BudgetBar({ refreshMs }) {
   const [budget, setBudget] = useState(null); // null = belum diset
   const [used, setUsed] = useState(0);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  // Ronde-38: waktu disimpan di state (bukan Date.now() saat render) supaya
+  // render server & client identik — kalau tidak, teks proyeksi bakal beda
+  // dan memicu peringatan hydration.
+  const [now, setNow] = useState(0);
 
+  // Ronde-38: sebelumnya stats hari ini diambil SEKALI saat mount, jadi bar
+  // membekuk selamanya kalau halaman dibiarkan terbuka (halaman Usage di sebelahnya
+  // justru auto-refresh). Kini ikut interval yang dipilih pengguna.
+  const interval = refreshMs > 0 ? refreshMs : 30000;
   useEffect(() => {
     let alive = true;
-    (async () => {
+    let settingsTick = 0;
+    const load = async () => {
       try {
+        const needSettings = settingsTick++ % 10 === 0; // settings cukup tiap 10 siklus
         const [s, u] = await Promise.all([
-          fetch("/api/settings").then((r) => (r.ok ? r.json() : null)),
+          needSettings
+            ? fetch("/api/settings").then((r) => (r.ok ? r.json() : null))
+            : Promise.resolve(null),
           fetch("/api/usage/stats?period=today").then((r) => (r.ok ? r.json() : null)),
         ]);
         if (!alive) return;
         if (s && typeof s.costBudgetDaily === "number") setBudget(s.costBudgetDaily);
         if (u) setUsed(Number(u.totalCost) || 0);
+        setNow(Date.now());
       } catch { /* diam — bar tetap tampil */ }
-    })();
-    return () => { alive = false; };
+    };
+    load();
+    const id = setInterval(load, interval);
+    const onVis = () => { if (!document.hidden) load(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { alive = false; clearInterval(id); document.removeEventListener("visibilitychange", onVis); };
+  }, [interval]);
+
+  // jam dinding utk proyeksi (tick tiap menit). Nilai awal datang dari load()
+  // (callback async) — memanggil setNow() sinkron di badan effect dilarang
+  // react-hooks/set-state-in-effect.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
   }, []);
 
   const save = async () => {
@@ -53,6 +78,19 @@ export default function BudgetBar() {
   const over = budget > 0 && used > budget;
   const warn = budget > 0 && !over && pct >= 80;
   const money = (n) => `$${(n || 0).toFixed(n >= 1 ? 2 : 4)}`;
+
+  // Ronde-38: proyeksi akhir hari — laju rata-rata × 24 jam. Hanya dihitung
+  // setelah 45 menit berlalu supaya angka awal hari tidak menyesatkan.
+  // Date.now() DIPINDAHKAN ke callback (load/interval); di badan render hanya
+  // konstanta `0` sehingga komponen tetap murni (react-hooks/purity).
+  const hasNow = Number.isFinite(now) && now > 0;
+  const dayStart = new Date(hasNow ? now : 0);
+  dayStart.setHours(0, 0, 0, 0);
+  const elapsedMin = hasNow ? Math.max(1, (now - dayStart.getTime()) / 60000) : 0;
+  const projected = elapsedMin > 0 ? (used / elapsedMin) * 1440 : 0;
+  const showProj = hasNow && budget > 0 && elapsedMin >= 45 && used > 0;
+  const projPct = showProj ? Math.round((projected / budget) * 100) : 0;
+  const projOver = showProj && projected > budget;
 
   return (
     <Card className="px-4 py-3">
@@ -130,9 +168,27 @@ export default function BudgetBar() {
             {pct}% of budget used
           </span>
         )}
+        {/* Ronde-38: proyeksi akhir hari — jawaban "kalau laju ini berlanjut,
+            berapa yang habis?" Sebelumnya hanya ada angka berjalan hari ini. */}
+        {showProj && (
+          <span
+            title={`Laju rata-rata ${money(used / elapsedMin)}/menit selama ${Math.floor(elapsedMin)} menit terakhir → ${money(projected)} dalam 24 jam`}
+            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium ${
+              projOver
+                ? "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400"
+                : "border-border bg-surface-2 text-text-muted"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[14px]">monitoring</span>
+            Proyeksi akhir hari <b className={projOver ? "" : "text-text-main"}>{money(projected)}</b>
+            <span className="opacity-70">({projPct}%)</span>
+          </span>
+        )}
       </div>
     </Card>
   );
 }
 
-BudgetBar.propTypes = {};
+BudgetBar.propTypes = {
+  refreshMs: PropTypes.number,
+};

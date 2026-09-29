@@ -57,6 +57,11 @@
     "validateUrl": "https://api.assemblyai.com/v1/account",
     "format": "openai"
   },
+  "atria": {
+    "baseUrl": "https://api.atria-asi.ai/v1/chat/completions",
+    "validateUrl": "https://api.atria-asi.ai/v1/models",
+    "format": "openai"
+  },
   "azure": {
     "baseUrl": "",
     "headers": {},
@@ -121,7 +126,9 @@
     "usage": {
       "oauthUrl": "https://api.anthropic.com/api/oauth/usage",
       "orgUrl": "https://api.anthropic.com/v1/organizations/{org_id}/usage",
-      "settingsUrl": "https://api.anthropic.com/v1/settings"
+      "settingsUrl": "https://api.anthropic.com/v1/settings",
+      "profileUrl": "https://api.anthropic.com/api/oauth/profile",
+      "resetUrl": "https://api.anthropic.com/api/organizations/{org_id}/reset_rate_limits"
     },
     "clientId": "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
     "tokenUrl": "https://api.anthropic.com/v1/oauth/token"
@@ -199,10 +206,11 @@
     "baseUrl": "https://chatgpt.com/backend-api/codex/responses",
     "format": "openai-responses",
     "forceStream": true,
-    "cliVersion": "0.154.0",
+    "cliVersion": "0.155.0",
     "headers": {
       "originator": "codex_cli_rs",
-      "User-Agent": "codex_cli_rs/0.154.0"
+      "User-Agent": "codex_cli_rs/0.155.0",
+      "version": "0.155.0"
     },
     "usage": {
       "url": "https://chatgpt.com/backend-api/wham/usage",
@@ -1086,14 +1094,19 @@
     },
     "format": "openai"
   },
-  "dahl": {
-    "baseUrl": "https://inference.dahl.global/v1/chat/completions",
-    "validateUrl": "https://inference.dahl.global/v1/models",
+  "adapta-web": {
+    "baseUrl": "https://agent.adapta.one/api/chat/stream/v1",
+    "validateUrl": "https://agent.adapta.one/api/chat/stream/v1/models",
     "format": "openai"
   },
-  "atria": {
-    "baseUrl": "https://api.atria-asi.ai/v1/chat/completions",
-    "validateUrl": "https://api.atria-asi.ai/v1/models",
+  "agentrouter": {
+    "baseUrl": "https://agentrouter.org/v1/messages",
+    "validateUrl": "https://agentrouter.org/v1/models",
+    "format": "openai"
+  },
+  "agnes-cn": {
+    "baseUrl": "https://api.agnes-ai.cn/v1/chat/completions",
+    "validateUrl": "https://api.agnes-ai.cn/v1/models",
     "format": "openai"
   },
   "agnes": {
@@ -1101,9 +1114,828 @@
     "validateUrl": "https://apihub.agnes-ai.com/v1/models",
     "format": "openai"
   },
+  "agy": {
+    "baseUrl": "https://daily-cloudcode-pa.googleapis.com",
+    "format": "openai"
+  },
+  "ai21": {
+    "baseUrl": "https://api.ai21.com/studio/v1/chat/completions",
+    "validateUrl": "https://api.ai21.com/studio/v1/models",
+    "format": "openai"
+  },
+  "aihorde": {
+    "baseUrl": "https://oai.aihorde.net/v1/chat/completions",
+    "validateUrl": "https://oai.aihorde.net/v1/models",
+    "format": "openai"
+  },
+  "aimlapi": {
+    "baseUrl": "https://api.aimlapi.com/v1/chat/completions",
+    "validateUrl": "https://api.aimlapi.com/v1/models",
+    "format": "openai"
+  },
+  "ainative": {
+    "baseUrl": "https://api.ainative.studio/api/v1/chat/completions",
+    "validateUrl": "https://api.ainative.studio/api/v1/models",
+    "format": "openai"
+  },
+  "aion": {
+    "baseUrl": "https://api.aionlabs.ai/v1/chat/completions",
+    "validateUrl": "https://api.aionlabs.ai/v1/models",
+    "format": "openai"
+  },
+  "alibaba-cn": {
+    "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    "validateUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1/models",
+    "format": "openai"
+  },
+  "alibaba": {
+    "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
+    "validateUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models",
+    "format": "openai"
+  },
+  "ant-ling": {
+    "baseUrl": "https://api.ant-ling.com/v1/chat/completions",
+    "validateUrl": "https://api.ant-ling.com/v1/models",
+    "format": "openai"
+  },
+  "anyapi": {
+    "baseUrl": "https://api.anyapi.ai/v1/chat/completions",
+    "validateUrl": "https://api.anyapi.ai/v1/models",
+    "format": "openai"
+  },
+  "arcee-ai": {
+    "baseUrl": "https://api.arcee.ai/api/v1/chat/completions",
+    "validateUrl": "https://api.arcee.ai/api/v1/models",
+    "format": "openai"
+  },
+  "auriko": {
+    "baseUrl": "https://api.auriko.ai/v1/chat/completions",
+    "validateUrl": "https://api.auriko.ai/v1/models",
+    "format": "openai"
+  },
+  "azure-ai": {
+    "baseUrl": "https://example-resource.services.ai.azure.com/openai/v1",
+    "validateUrl": "https://example-resource.services.ai.azure.com/openai/v1/models",
+    "format": "openai"
+  },
   "bai": {
     "baseUrl": "https://api.b.ai/v1/chat/completions",
     "validateUrl": "https://api.b.ai/v1/models",
+    "format": "openai"
+  },
+  "baichuan": {
+    "baseUrl": "https://api.baichuan-ai.com/v1/chat/completions",
+    "validateUrl": "https://api.baichuan-ai.com/v1/models",
+    "format": "openai"
+  },
+  "baseten": {
+    "baseUrl": "https://inference.baseten.co/v1/chat/completions",
+    "validateUrl": "https://inference.baseten.co/v1/models",
+    "format": "openai"
+  },
+  "blackbox-web": {
+    "baseUrl": "https://app.blackbox.ai/api/chat",
+    "format": "openai"
+  },
+  "bytez": {
+    "baseUrl": "https://api.bytez.com/models/v2/openai/v1/chat/completions",
+    "validateUrl": "https://api.bytez.com/models/v2/openai/v1/models",
+    "format": "openai"
+  },
+  "charm-hyper": {
+    "baseUrl": "https://hyper.charm.land/v1/chat/completions",
+    "validateUrl": "https://hyper.charm.land/v1/models",
+    "format": "openai"
+  },
+  "chat-oripe": {
+    "baseUrl": "https://api.oriper.com/v1/chat/completions",
+    "validateUrl": "https://api.oriper.com/v1/models",
+    "format": "openai"
+  },
+  "chatanywhere": {
+    "baseUrl": "https://api.chatanywhere.org/v1/chat/completions",
+    "validateUrl": "https://api.chatanywhere.org/v1/models",
+    "format": "openai"
+  },
+  "chatgpt-web-codex": {
+    "baseUrl": "https://chatgpt.com",
+    "format": "openai"
+  },
+  "chatgpt-web": {
+    "baseUrl": "https://chatgpt.com",
+    "format": "openai"
+  },
+  "cheaperinference": {
+    "baseUrl": "https://api.cheaperinference.com/v1/chat/completions",
+    "validateUrl": "https://api.cheaperinference.com/v1/models",
+    "format": "openai"
+  },
+  "chenzk": {
+    "baseUrl": "https://chenzk.top/v1/chat/completions",
+    "validateUrl": "https://chenzk.top/v1/models",
+    "format": "openai"
+  },
+  "claude-web": {
+    "baseUrl": "https://claude.ai/api/organizations",
+    "format": "openai"
+  },
+  "cloudcode-one": {
+    "baseUrl": "https://api.cloudcode.one/v1/chat/completions",
+    "validateUrl": "https://api.cloudcode.one/v1/models",
+    "format": "openai"
+  },
+  "cloudflare-playground": {
+    "baseUrl": "https://playground.ai.cloudflare.com",
+    "format": "openai"
+  },
+  "clova-studio": {
+    "baseUrl": "https://clovastudio.stream.ntruss.com/v3/chat-completions",
+    "format": "openai"
+  },
+  "codestral": {
+    "baseUrl": "https://codestral.mistral.ai/v1/chat/completions",
+    "validateUrl": "https://codestral.mistral.ai/v1/models",
+    "format": "openai"
+  },
+  "conol-web": {
+    "baseUrl": "https://conol.ai/api/sessions",
+    "format": "openai"
+  },
+  "coze": {
+    "baseUrl": "https://api.coze.com/v1/chat/completions",
+    "validateUrl": "https://api.coze.com/v1/models",
+    "format": "openai"
+  },
+  "crof": {
+    "baseUrl": "https://crof.ai/v1/chat/completions",
+    "validateUrl": "https://crof.ai/v1/models",
+    "format": "openai"
+  },
+  "cursor-api": {
+    "baseUrl": "https://api2.cursor.sh",
+    "format": "openai"
+  },
+  "dahl": {
+    "baseUrl": "https://inference.dahl.global/v1/chat/completions",
+    "validateUrl": "https://inference.dahl.global/v1/models",
+    "format": "openai"
+  },
+  "databricks": {
+    "baseUrl": "https://adb-0000000000000000.0.azuredatabricks.net/serving-endpoints",
+    "format": "openai"
+  },
+  "deepai": {
+    "baseUrl": "https://api.deepai.org",
+    "format": "openai"
+  },
+  "deepinfra": {
+    "baseUrl": "https://api.deepinfra.com/v1/openai/chat/completions",
+    "validateUrl": "https://api.deepinfra.com/v1/openai/models",
+    "format": "openai"
+  },
+  "deepseek-web": {
+    "baseUrl": "https://chat.deepseek.com/api/v0/chat/completion",
+    "format": "openai"
+  },
+  "devin-desktop": {
+    "baseUrl": "https://server.codeium.com",
+    "format": "openai"
+  },
+  "dgrid": {
+    "baseUrl": "https://api.dgrid.ai/v1/chat/completions",
+    "validateUrl": "https://api.dgrid.ai/v1/models",
+    "format": "openai"
+  },
+  "dify": {
+    "baseUrl": "https://api.dify.ai",
+    "format": "openai"
+  },
+  "digitalocean": {
+    "baseUrl": "https://inference.do-ai.run/v1/chat/completions",
+    "validateUrl": "https://inference.do-ai.run/v1/models",
+    "format": "openai"
+  },
+  "dit": {
+    "baseUrl": "https://api.dit.ai/v1/chat/completions",
+    "validateUrl": "https://api.dit.ai/v1/models",
+    "format": "openai"
+  },
+  "docker-model-runner": {
+    "baseUrl": "http://localhost:12434/v1",
+    "validateUrl": "http://localhost:12434/v1/models",
+    "format": "openai"
+  },
+  "doubao-web": {
+    "baseUrl": "https://www.dola.com/chat/completion",
+    "format": "openai"
+  },
+  "doubao": {
+    "baseUrl": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+    "validateUrl": "https://ark.cn-beijing.volces.com/api/v3/models",
+    "format": "openai"
+  },
+  "duckduckgo-web": {
+    "baseUrl": "https://duck.ai/duckchat/v1/chat",
+    "format": "openai"
+  },
+  "dxnt": {
+    "baseUrl": "https://www.dxnt.com/v1/chat/completions",
+    "validateUrl": "https://www.dxnt.com/v1/models",
+    "format": "openai"
+  },
+  "electronhub": {
+    "baseUrl": "https://api.electronhub.ai/v1/chat/completions",
+    "validateUrl": "https://api.electronhub.ai/v1/models",
+    "format": "openai"
+  },
+  "eurouter": {
+    "baseUrl": "https://api.eurouter.ai/v1/chat/completions",
+    "validateUrl": "https://api.eurouter.ai/v1/models",
+    "format": "openai"
+  },
+  "factory": {
+    "baseUrl": "https://api.factory.ai/v1/chat/completions",
+    "validateUrl": "https://api.factory.ai/v1/models",
+    "format": "openai"
+  },
+  "fastrouter": {
+    "baseUrl": "https://api.fastrouter.ai/api/v1/chat/completions",
+    "validateUrl": "https://api.fastrouter.ai/api/v1/models",
+    "format": "openai"
+  },
+  "featherless-ai": {
+    "baseUrl": "https://api.featherless.ai/v1/chat/completions",
+    "validateUrl": "https://api.featherless.ai/v1/models",
+    "format": "openai"
+  },
+  "free-ai": {
+    "baseUrl": "https://api.free.ai/v1/chat/",
+    "format": "openai"
+  },
+  "freeaiapikey": {
+    "baseUrl": "https://api.freeaiapikey.com/v1/chat/completions",
+    "validateUrl": "https://api.freeaiapikey.com/v1/models",
+    "format": "openai"
+  },
+  "freebuff": {
+    "baseUrl": "https://www.codebuff.com/api/v1",
+    "validateUrl": "https://www.codebuff.com/api/v1/models",
+    "format": "openai"
+  },
+  "freeinference": {
+    "baseUrl": "https://freeinference.org/v1/chat/completions",
+    "validateUrl": "https://freeinference.org/v1/models",
+    "format": "openai"
+  },
+  "freemodel-dev": {
+    "baseUrl": "https://api.freemodel.dev/v1/chat/completions",
+    "validateUrl": "https://api.freemodel.dev/v1/models",
+    "format": "openai"
+  },
+  "freetheai": {
+    "baseUrl": "https://api.freetheai.xyz/v1/chat/completions",
+    "validateUrl": "https://api.freetheai.xyz/v1/models",
+    "format": "openai"
+  },
+  "friendliai": {
+    "baseUrl": "https://api.friendli.ai/serverless/v1/chat/completions",
+    "validateUrl": "https://api.friendli.ai/serverless/v1/models",
+    "format": "openai"
+  },
+  "g4f-gemini": {
+    "baseUrl": "https://g4f.space/api/gemini/v1/chat/completions",
+    "validateUrl": "https://g4f.space/api/gemini/v1/models",
+    "format": "openai"
+  },
+  "g4f-groq": {
+    "baseUrl": "https://g4f.space/api/groq/v1/chat/completions",
+    "validateUrl": "https://g4f.space/api/groq/v1/models",
+    "format": "openai"
+  },
+  "g4f-nvidia": {
+    "baseUrl": "https://g4f.space/api/nvidia/v1/chat/completions",
+    "validateUrl": "https://g4f.space/api/nvidia/v1/models",
+    "format": "openai"
+  },
+  "g4f-ollama": {
+    "baseUrl": "https://g4f.space/api/ollama/v1/chat/completions",
+    "validateUrl": "https://g4f.space/api/ollama/v1/models",
+    "format": "openai"
+  },
+  "g4f-pollinations": {
+    "baseUrl": "https://g4f.space/api/pollinations/v1/chat/completions",
+    "validateUrl": "https://g4f.space/api/pollinations/v1/models",
+    "format": "openai"
+  },
+  "galadriel": {
+    "baseUrl": "https://api.galadriel.ai/v1/chat/completions",
+    "validateUrl": "https://api.galadriel.ai/v1/models",
+    "format": "openai"
+  },
+  "gemini-web": {
+    "baseUrl": "https://gemini.google.com/app",
+    "format": "openai"
+  },
+  "ghe-copilot": {
+    "baseUrl": "https://api.githubcopilot.com/chat/completions",
+    "validateUrl": "https://api.githubcopilot.com/models",
+    "format": "openai"
+  },
+  "gigachat": {
+    "baseUrl": "https://gigachat.devices.sberbank.ru/api/v1",
+    "validateUrl": "https://gigachat.devices.sberbank.ru/api/v1/models",
+    "format": "openai"
+  },
+  "gitlawb-gmi": {
+    "baseUrl": "https://opengateway.gitlawb.com/v1/gmi-cloud",
+    "format": "openai"
+  },
+  "gitlawb": {
+    "baseUrl": "https://opengateway.gitlawb.com/v1/xiaomi-mimo",
+    "format": "openai"
+  },
+  "glmt": {
+    "baseUrl": "https://api.z.ai/api/coding/paas/v4/chat/completions",
+    "validateUrl": "https://api.z.ai/api/coding/paas/v4/models",
+    "format": "openai"
+  },
+  "greenpt": {
+    "baseUrl": "https://api.greenpt.ai/v1/chat/completions",
+    "validateUrl": "https://api.greenpt.ai/v1/models",
+    "format": "openai"
+  },
+  "haiper": {
+    "baseUrl": "https://api.haiper.ai/v1",
+    "validateUrl": "https://api.haiper.ai/v1/models",
+    "format": "openai"
+  },
+  "hcnsec": {
+    "baseUrl": "https://api.hcnsec.cn/v1/chat/completions",
+    "validateUrl": "https://api.hcnsec.cn/v1/models",
+    "format": "openai"
+  },
+  "helixmind": {
+    "baseUrl": "https://helixmind.online/v1/chat/completions",
+    "validateUrl": "https://helixmind.online/v1/models",
+    "format": "openai"
+  },
+  "helyxai": {
+    "baseUrl": "https://helyxai.space/v1/chat/completions",
+    "validateUrl": "https://helyxai.space/v1/models",
+    "format": "openai"
+  },
+  "heroku": {
+    "baseUrl": "https://us.inference.heroku.com/v1/chat/completions",
+    "validateUrl": "https://us.inference.heroku.com/v1/models",
+    "format": "openai"
+  },
+  "huggingchat": {
+    "baseUrl": "https://huggingface.co/chat/conversation",
+    "format": "openai"
+  },
+  "hyperagent": {
+    "baseUrl": "https://hyperagent.com/api/threads",
+    "format": "openai"
+  },
+  "ideogram": {
+    "baseUrl": "https://api.ideogram.ai",
+    "format": "openai"
+  },
+  "iflytek": {
+    "baseUrl": "https://spark-api-open.xf-yun.com/v1/chat/completions",
+    "validateUrl": "https://spark-api-open.xf-yun.com/v1/models",
+    "format": "openai"
+  },
+  "inception": {
+    "baseUrl": "https://api.inceptionlabs.ai/v1/chat/completions",
+    "validateUrl": "https://api.inceptionlabs.ai/v1/models",
+    "format": "openai"
+  },
+  "inference-net": {
+    "baseUrl": "https://api.inference.net/v1/chat/completions",
+    "validateUrl": "https://api.inference.net/v1/models",
+    "format": "openai"
+  },
+  "inner-ai": {
+    "baseUrl": "https://chatapi.innerai.com/chat",
+    "format": "openai"
+  },
+  "internlm": {
+    "baseUrl": "https://chat.intern-ai.org.cn/api/v1/chat/completions",
+    "validateUrl": "https://chat.intern-ai.org.cn/api/v1/models",
+    "format": "openai"
+  },
+  "kenari": {
+    "baseUrl": "https://kenari.id/v1/chat/completions",
+    "validateUrl": "https://kenari.id/v1/models",
+    "format": "openai"
+  },
+  "kie": {
+    "baseUrl": "https://api.kie.ai/v1/chat/completions",
+    "validateUrl": "https://api.kie.ai/v1/models",
+    "format": "openai"
+  },
+  "kimi-coding-apikey": {
+    "baseUrl": "https://api.kimi.com/coding/v1/messages?beta=true",
+    "format": "openai"
+  },
+  "kimi-coding": {
+    "baseUrl": "https://api.kimi.com/coding/v1/messages?beta=true",
+    "format": "openai"
+  },
+  "kimi-web": {
+    "baseUrl": "https://www.kimi.ai",
+    "format": "openai"
+  },
+  "lambda-ai": {
+    "baseUrl": "https://api.lambda.ai/v1/chat/completions",
+    "validateUrl": "https://api.lambda.ai/v1/models",
+    "format": "openai"
+  },
+  "lemonade": {
+    "baseUrl": "http://localhost:13305/api/v1",
+    "validateUrl": "http://localhost:13305/api/v1/models",
+    "format": "openai"
+  },
+  "leonardo": {
+    "baseUrl": "https://cloud.leonardo.ai/api/rest/v1",
+    "validateUrl": "https://cloud.leonardo.ai/api/rest/v1/models",
+    "format": "openai"
+  },
+  "liquid": {
+    "baseUrl": "https://inference.liquid.ai/v1/chat/completions",
+    "validateUrl": "https://inference.liquid.ai/v1/models",
+    "format": "openai"
+  },
+  "literouter": {
+    "baseUrl": "https://api.literouter.com/v1/chat/completions",
+    "validateUrl": "https://api.literouter.com/v1/models",
+    "format": "openai"
+  },
+  "llama-cpp": {
+    "baseUrl": "http://127.0.0.1:8080/v1",
+    "validateUrl": "http://127.0.0.1:8080/v1/models",
+    "format": "openai"
+  },
+  "llamafile": {
+    "baseUrl": "http://127.0.0.1:8080/v1",
+    "validateUrl": "http://127.0.0.1:8080/v1/models",
+    "format": "openai"
+  },
+  "llamagate": {
+    "baseUrl": "https://llamagate.ai/v1/chat/completions",
+    "validateUrl": "https://llamagate.ai/v1/models",
+    "format": "openai"
+  },
+  "llm-kiwi": {
+    "baseUrl": "https://api.llm.kiwi/v1/chat/completions",
+    "validateUrl": "https://api.llm.kiwi/v1/models",
+    "format": "openai"
+  },
+  "llmgateway": {
+    "baseUrl": "https://api.llmgateway.io/v1/chat/completions",
+    "validateUrl": "https://api.llmgateway.io/v1/models",
+    "format": "openai"
+  },
+  "lm-studio": {
+    "baseUrl": "http://localhost:1234/v1",
+    "validateUrl": "http://localhost:1234/v1/models",
+    "format": "openai"
+  },
+  "lmarena": {
+    "baseUrl": "https://arena.ai/nextjs-api/stream/create-evaluation",
+    "format": "openai"
+  },
+  "logfare": {
+    "baseUrl": "https://logfare.ai/v1/chat/completions",
+    "validateUrl": "https://logfare.ai/v1/models",
+    "format": "openai"
+  },
+  "longcat": {
+    "baseUrl": "https://api.longcat.chat/openai/v1/chat/completions",
+    "validateUrl": "https://api.longcat.chat/openai/v1/models",
+    "format": "openai"
+  },
+  "lyceum": {
+    "baseUrl": "https://api.lyceum.technology/openai/v1/chat/completions",
+    "validateUrl": "https://api.lyceum.technology/openai/v1/models",
+    "format": "openai"
+  },
+  "maritalk": {
+    "baseUrl": "https://chat.maritaca.ai/api",
+    "format": "openai"
+  },
+  "maxai": {
+    "baseUrl": "https://api.maxai.me",
+    "format": "openai"
+  },
+  "meganova-ai": {
+    "baseUrl": "https://api.meganova.ai/v1/chat/completions",
+    "validateUrl": "https://api.meganova.ai/v1/models",
+    "format": "openai"
+  },
+  "meta-llama": {
+    "baseUrl": "https://api.llama.com/compat/v1/chat/completions",
+    "validateUrl": "https://api.llama.com/compat/v1/models",
+    "format": "openai"
+  },
+  "mixlayer": {
+    "baseUrl": "https://models.mixlayer.ai/v1/chat/completions",
+    "validateUrl": "https://models.mixlayer.ai/v1/models",
+    "format": "openai"
+  },
+  "mlx-gemma": {
+    "baseUrl": "http://localhost:11435/v1",
+    "validateUrl": "http://localhost:11435/v1/models",
+    "format": "openai"
+  },
+  "mlx-qwen": {
+    "baseUrl": "http://localhost:11436/v1",
+    "validateUrl": "http://localhost:11436/v1/models",
+    "format": "openai"
+  },
+  "mnn-ai": {
+    "baseUrl": "https://api.mnnai.ru/v1/chat/completions",
+    "validateUrl": "https://api.mnnai.ru/v1/models",
+    "format": "openai"
+  },
+  "modal": {
+    "baseUrl": "https://api.modal.ai/v1/chat/completions",
+    "validateUrl": "https://api.modal.ai/v1/models",
+    "format": "openai"
+  },
+  "modelscope": {
+    "baseUrl": "https://api-inference.modelscope.cn/v1/chat/completions",
+    "validateUrl": "https://api-inference.modelscope.cn/v1/models",
+    "format": "openai"
+  },
+  "monsterapi": {
+    "baseUrl": "https://api.monsterapi.ai/v1/chat/completions",
+    "validateUrl": "https://api.monsterapi.ai/v1/models",
+    "format": "openai"
+  },
+  "muse-code": {
+    "baseUrl": "https://api.meta.ai/v1/responses",
+    "format": "openai"
+  },
+  "muse-spark-web": {
+    "baseUrl": "https://www.meta.ai/api/graphql",
+    "format": "openai"
+  },
+  "naga-ac": {
+    "baseUrl": "https://api.naga.ac/v1/chat/completions",
+    "validateUrl": "https://api.naga.ac/v1/models",
+    "format": "openai"
+  },
+  "naga-ai": {
+    "baseUrl": "https://api.naga.ac/v1/chat/completions",
+    "validateUrl": "https://api.naga.ac/v1/models",
+    "format": "openai"
+  },
+  "nanogpt": {
+    "baseUrl": "https://nano-gpt.com/api/v1/chat/completions",
+    "validateUrl": "https://nano-gpt.com/api/v1/models",
+    "format": "openai"
+  },
+  "nara": {
+    "baseUrl": "https://router.bynara.id/v1/chat/completions",
+    "validateUrl": "https://router.bynara.id/v1/models",
+    "format": "openai"
+  },
+  "navy": {
+    "baseUrl": "https://api.navy/v1/chat/completions",
+    "validateUrl": "https://api.navy/v1/models",
+    "format": "openai"
+  },
+  "nlpcloud": {
+    "baseUrl": "https://api.nlpcloud.io/v1/gpu",
+    "format": "openai"
+  },
+  "notion-web": {
+    "baseUrl": "https://app.notion.com/api/v3/runInferenceTranscript",
+    "format": "openai"
+  },
+  "nous-research": {
+    "baseUrl": "https://inference-api.nousresearch.com/v1/chat/completions",
+    "validateUrl": "https://inference-api.nousresearch.com/v1/models",
+    "format": "openai"
+  },
+  "novita": {
+    "baseUrl": "https://api.novita.ai/openai/v1/chat/completions",
+    "validateUrl": "https://api.novita.ai/openai/v1/models",
+    "format": "openai"
+  },
+  "nscale": {
+    "baseUrl": "https://inference.api.nscale.com/v1/chat/completions",
+    "validateUrl": "https://inference.api.nscale.com/v1/models",
+    "format": "openai"
+  },
+  "nube": {
+    "baseUrl": "https://ai.nube.sh/api/v1/chat/completions",
+    "validateUrl": "https://ai.nube.sh/api/v1/models",
+    "format": "openai"
+  },
+  "ofoxai": {
+    "baseUrl": "https://api.ofox.ai/v1/chat/completions",
+    "validateUrl": "https://api.ofox.ai/v1/models",
+    "format": "openai"
+  },
+  "oneminai": {
+    "baseUrl": "https://api.1min.ai/api/chat-with-ai",
+    "format": "openai"
+  },
+  "oobabooga": {
+    "baseUrl": "http://localhost:5000/v1",
+    "validateUrl": "http://localhost:5000/v1/models",
+    "format": "openai"
+  },
+  "openadapter": {
+    "baseUrl": "https://api.openadapter.in/v1/chat/completions",
+    "validateUrl": "https://api.openadapter.in/v1/models",
+    "format": "openai"
+  },
+  "openference-api": {
+    "baseUrl": "https://api.openference.com/v1/chat/completions",
+    "validateUrl": "https://api.openference.com/v1/models",
+    "format": "openai"
+  },
+  "openference": {
+    "baseUrl": "https://api.openference.com/v1/chat/completions",
+    "validateUrl": "https://api.openference.com/v1/models",
+    "format": "openai"
+  },
+  "openvecta": {
+    "baseUrl": "https://api.openvecta.com/v1/chat/completions",
+    "validateUrl": "https://api.openvecta.com/v1/models",
+    "format": "openai"
+  },
+  "opper": {
+    "baseUrl": "https://api.opper.ai/v3/compat/chat/completions",
+    "validateUrl": "https://api.opper.ai/v3/compat/models",
+    "format": "openai"
+  },
+  "orcarouter": {
+    "baseUrl": "https://api.orcarouter.ai/v1/chat/completions",
+    "validateUrl": "https://api.orcarouter.ai/v1/models",
+    "format": "openai"
+  },
+  "ovhcloud": {
+    "baseUrl": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions",
+    "validateUrl": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/models",
+    "format": "openai"
+  },
+  "pioneer": {
+    "baseUrl": "https://api.pioneer.ai/v1/chat/completions",
+    "validateUrl": "https://api.pioneer.ai/v1/models",
+    "format": "openai"
+  },
+  "plamo": {
+    "baseUrl": "https://api.platform.preferredai.jp/v1/chat/completions",
+    "validateUrl": "https://api.platform.preferredai.jp/v1/models",
+    "format": "openai"
+  },
+  "poe": {
+    "baseUrl": "https://api.poe.com/v1/chat/completions",
+    "validateUrl": "https://api.poe.com/v1/models",
+    "format": "openai"
+  },
+  "poixe-ai": {
+    "baseUrl": "https://api.poixe.com/v1/chat/completions",
+    "validateUrl": "https://api.poixe.com/v1/models",
+    "format": "openai"
+  },
+  "pollinations": {
+    "baseUrl": "https://gen.pollinations.ai/v1/chat/completions",
+    "validateUrl": "https://gen.pollinations.ai/v1/models",
+    "format": "openai"
+  },
+  "predibase": {
+    "baseUrl": "https://serving.app.predibase.com/v1/chat/completions",
+    "validateUrl": "https://serving.app.predibase.com/v1/models",
+    "format": "openai"
+  },
+  "promptql": {
+    "baseUrl": "https://data.prompt.ql.app/promptql/playground-v2-hge/v1/graphql",
+    "format": "openai"
+  },
+  "publicai": {
+    "baseUrl": "https://api.publicai.co/v1/chat/completions",
+    "validateUrl": "https://api.publicai.co/v1/models",
+    "format": "openai"
+  },
+  "qiniu": {
+    "baseUrl": "https://api.qnaigc.com/v1/chat/completions",
+    "validateUrl": "https://api.qnaigc.com/v1/models",
+    "format": "openai"
+  },
+  "qwen-cloud-token-plan": {
+    "baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions",
+    "validateUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/models",
+    "format": "openai"
+  },
+  "qwen-cloud": {
+    "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
+    "validateUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models",
+    "format": "openai"
+  },
+  "regolo": {
+    "baseUrl": "https://api.regolo.ai",
+    "format": "openai"
+  },
+  "reka": {
+    "baseUrl": "https://api.reka.ai/v1/chat/completions",
+    "validateUrl": "https://api.reka.ai/v1/models",
+    "format": "openai"
+  },
+  "requesty": {
+    "baseUrl": "https://router.requesty.ai/v1/chat/completions",
+    "validateUrl": "https://router.requesty.ai/v1/models",
+    "format": "openai"
+  },
+  "routeway": {
+    "baseUrl": "https://api.routeway.ai/v1/chat/completions",
+    "validateUrl": "https://api.routeway.ai/v1/models",
+    "format": "openai"
+  },
+  "sarvam": {
+    "baseUrl": "https://api.sarvam.ai/v1/chat/completions",
+    "validateUrl": "https://api.sarvam.ai/v1/models",
+    "format": "openai"
+  },
+  "scaleway": {
+    "baseUrl": "https://api.scaleway.ai/v1/chat/completions",
+    "validateUrl": "https://api.scaleway.ai/v1/models",
+    "format": "openai"
+  },
+  "sealion": {
+    "baseUrl": "https://api.sea-lion.ai/v1/chat/completions",
+    "validateUrl": "https://api.sea-lion.ai/v1/models",
+    "format": "openai"
+  },
+  "searxng-search": {
+    "baseUrl": "http://localhost:8888/search",
+    "format": "openai"
+  },
+  "seekai": {
+    "baseUrl": "https://seekai.cc/v1/chat/completions",
+    "validateUrl": "https://seekai.cc/v1/models",
+    "format": "openai"
+  },
+  "sensenova": {
+    "baseUrl": "https://token.sensenova.cn/v1/chat/completions",
+    "validateUrl": "https://token.sensenova.cn/v1/models",
+    "format": "openai"
+  },
+  "snowflake": {
+    "baseUrl": "https://{account}.snowflakecomputing.com/api/v2",
+    "format": "openai"
+  },
+  "sparkdesk": {
+    "baseUrl": "https://spark-api-open.xf-yun.com/v1/chat/completions",
+    "validateUrl": "https://spark-api-open.xf-yun.com/v1/models",
+    "format": "openai"
+  },
+  "speka": {
+    "baseUrl": "https://speka.me/v1/chat/completions",
+    "validateUrl": "https://speka.me/v1/models",
+    "format": "openai"
+  },
+  "stepfun": {
+    "baseUrl": "https://api.stepfun.com/v1/chat/completions",
+    "validateUrl": "https://api.stepfun.com/v1/models",
+    "format": "openai"
+  },
+  "sumopod": {
+    "baseUrl": "https://ai.sumopod.com/v1/chat/completions",
+    "validateUrl": "https://ai.sumopod.com/v1/models",
+    "format": "openai"
+  },
+  "synthetic": {
+    "baseUrl": "https://api.synthetic.new/openai/v1/chat/completions",
+    "validateUrl": "https://api.synthetic.new/openai/v1/models",
+    "format": "openai"
+  },
+  "t3-web": {
+    "baseUrl": "https://t3.chat/api/chat",
+    "format": "openai"
+  },
+  "tabitoken": {
+    "baseUrl": "https://tabitoken.com/v1/messages",
+    "validateUrl": "https://tabitoken.com/v1/models",
+    "format": "openai"
+  },
+  "tencent-aistudio-web": {
+    "baseUrl": "https://aistudio.tencent.ai/api/chat",
+    "format": "openai"
+  },
+  "tinycms-web": {
+    "baseUrl": "https://gov.freegpt.win/api/openai/oneapi/v1/chat/completions",
+    "validateUrl": "https://gov.freegpt.win/api/openai/oneapi/v1/models",
+    "format": "openai"
+  },
+  "token-kiosk": {
+    "baseUrl": "https://agent-router.gaib.ai/v1/chat/completions",
+    "validateUrl": "https://agent-router.gaib.ai/v1/models",
     "format": "openai"
   },
   "tokenharbor": {
@@ -1112,6 +1944,170 @@
     "retry": {
       "429": 2
     },
+    "format": "openai"
+  },
+  "tokenreply": {
+    "baseUrl": "https://api.tokenreply.com/v1/chat/completions",
+    "validateUrl": "https://api.tokenreply.com/v1/models",
+    "format": "openai"
+  },
+  "triton": {
+    "baseUrl": "http://localhost:8000/v1",
+    "validateUrl": "http://localhost:8000/v1/models",
+    "format": "openai"
+  },
+  "typhoon": {
+    "baseUrl": "https://api.opentyphoon.ai/v1/chat/completions",
+    "validateUrl": "https://api.opentyphoon.ai/v1/models",
+    "format": "openai"
+  },
+  "uc-direct": {
+    "baseUrl": "https://api.uncensored.com/api/v1",
+    "validateUrl": "https://api.uncensored.com/api/v1/models",
+    "format": "openai"
+  },
+  "uc": {
+    "baseUrl": "https://internal-6.pubyar.com",
+    "format": "openai"
+  },
+  "udio": {
+    "baseUrl": "https://www.udio.com/api/generate-proxy",
+    "format": "openai"
+  },
+  "uncloseai": {
+    "baseUrl": "https://hermes.ai.unturf.com/v1/chat/completions",
+    "validateUrl": "https://hermes.ai.unturf.com/v1/models",
+    "format": "openai"
+  },
+  "unorouter": {
+    "baseUrl": "https://api.unorouter.com/v1/chat/completions",
+    "validateUrl": "https://api.unorouter.com/v1/models",
+    "format": "openai"
+  },
+  "upstage": {
+    "baseUrl": "https://api.upstage.ai/v1/chat/completions",
+    "validateUrl": "https://api.upstage.ai/v1/models",
+    "format": "openai"
+  },
+  "v0-vercel": {
+    "baseUrl": "https://api.v0.dev/v1/chat/completions",
+    "validateUrl": "https://api.v0.dev/v1/models",
+    "format": "openai"
+  },
+  "veoaifree-web": {
+    "baseUrl": "https://veoaifree.com/wp-admin/admin-ajax.php",
+    "format": "openai"
+  },
+  "vllm": {
+    "baseUrl": "http://localhost:8000/v1",
+    "validateUrl": "http://localhost:8000/v1/models",
+    "format": "openai"
+  },
+  "void-ai": {
+    "baseUrl": "https://api.voidai.app/v1/chat/completions",
+    "validateUrl": "https://api.voidai.app/v1/models",
+    "format": "openai"
+  },
+  "volcengine-agent-plan": {
+    "baseUrl": "https://ark.cn-beijing.volces.com/api/plan/v3/chat/completions",
+    "validateUrl": "https://ark.cn-beijing.volces.com/api/plan/v3/models",
+    "format": "openai"
+  },
+  "volcengine-coding-plan": {
+    "baseUrl": "https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions",
+    "validateUrl": "https://ark.cn-beijing.volces.com/api/coding/v3/models",
+    "format": "openai"
+  },
+  "volcengine": {
+    "baseUrl": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+    "validateUrl": "https://ark.cn-beijing.volces.com/api/v3/models",
+    "format": "openai"
+  },
+  "wafer": {
+    "baseUrl": "https://pass.wafer.ai/v1/messages",
+    "validateUrl": "https://pass.wafer.ai/v1/models",
+    "format": "openai"
+  },
+  "wandb": {
+    "baseUrl": "https://api.inference.wandb.ai/v1/chat/completions",
+    "validateUrl": "https://api.inference.wandb.ai/v1/models",
+    "format": "openai"
+  },
+  "writer": {
+    "baseUrl": "https://api.writer.com/v1/chat/completions",
+    "validateUrl": "https://api.writer.com/v1/models",
+    "format": "openai"
+  },
+  "x5lab": {
+    "baseUrl": "https://api.x5lab.dev/v1/chat/completions",
+    "validateUrl": "https://api.x5lab.dev/v1/models",
+    "format": "openai"
+  },
+  "xai-oauth": {
+    "baseUrl": "https://api.x.ai/v1/chat/completions",
+    "validateUrl": "https://api.x.ai/v1/models",
+    "format": "openai"
+  },
+  "xiaomi-mimo-token-plan": {
+    "baseUrl": "https://token-plan-sgp.xiaomimimo.com/v1",
+    "validateUrl": "https://token-plan-sgp.xiaomimimo.com/v1/models",
+    "format": "openai"
+  },
+  "xinference": {
+    "baseUrl": "http://localhost:9997/v1",
+    "validateUrl": "http://localhost:9997/v1/models",
+    "format": "openai"
+  },
+  "xkiro": {
+    "baseUrl": "https://api.xkiro.com/v1/chat/completions",
+    "validateUrl": "https://api.xkiro.com/v1/models",
+    "format": "openai"
+  },
+  "yi": {
+    "baseUrl": "https://api.lingyiwanwu.com/v1/chat/completions",
+    "validateUrl": "https://api.lingyiwanwu.com/v1/models",
+    "format": "openai"
+  },
+  "yolo-auto": {
+    "baseUrl": "https://yolo-auto.com/v1/chat/completions",
+    "validateUrl": "https://yolo-auto.com/v1/models",
+    "format": "openai"
+  },
+  "yuanbao-web": {
+    "baseUrl": "https://yuanbao.tencent.com/api/chat",
+    "format": "openai"
+  },
+  "zai-web": {
+    "baseUrl": "https://chat.z.ai",
+    "format": "openai"
+  },
+  "zai": {
+    "baseUrl": "https://api.z.ai/api/anthropic/v1/messages",
+    "validateUrl": "https://api.z.ai/api/anthropic/v1/models",
+    "format": "openai"
+  },
+  "zed-hosted": {
+    "baseUrl": "https://cloud.zed.dev/completions",
+    "format": "openai"
+  },
+  "zenmux-free": {
+    "baseUrl": "https://zenmux.ai/api/anthropic/v1/messages",
+    "validateUrl": "https://zenmux.ai/api/anthropic/v1/models",
+    "format": "openai"
+  },
+  "zenmux": {
+    "baseUrl": "https://zenmux.ai/api/v1/chat/completions",
+    "validateUrl": "https://zenmux.ai/api/v1/models",
+    "format": "openai"
+  },
+  "zerolimitai": {
+    "baseUrl": "https://www.zerolimitai.com/api/v1/chat/completions",
+    "validateUrl": "https://www.zerolimitai.com/api/v1/models",
+    "format": "openai"
+  },
+  "zylo-api": {
+    "baseUrl": "https://api.zyloai.net/v1/chat/completions",
+    "validateUrl": "https://api.zyloai.net/v1/models",
     "format": "openai"
   }
 }

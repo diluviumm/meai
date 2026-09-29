@@ -172,7 +172,9 @@ function UsageContent() {
             refreshMs={refreshMs}
             onRefreshChange={changeRefresh}
           />
-          <BudgetBar />
+          {/* Ronde-38: ikut interval pilihan pengguna — sebelumnya bar budget
+              mengambil stats sekali saat mount dan membekuk selamanya. */}
+          <BudgetBar refreshMs={refreshMs} />
           <Suspense fallback={<CardSkeleton />}>
             <UsageStats
               period={period}
