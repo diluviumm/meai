@@ -109,3 +109,4 @@ debug.log
 *.tgz
 PLAN-FITUR.md
 .jspace/
+tests/.vitest-data/

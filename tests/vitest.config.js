@@ -7,6 +7,9 @@ const __dirname = fileURLToPath(new URL(".", import.meta.url));
 export default defineConfig({
   test: {
     environment: "node",
+    // Ronde-36: SANDBOX. Tanpa ini test menulis ke ~/.meai/db/data.sqlite
+    // (providerConnections tercemar 2 -> 435 baris pada 29 Sep 2026).
+    env: { DATA_DIR: resolve(__dirname, ".vitest-data") },
     globals: true,
     include: ["**/*.test.js"],
     // Don't scan into git worktrees nested under .claude/ — they carry their
