@@ -41,6 +41,7 @@ Katalog **free-tier** (pools, kuota, hitungan token/bulan) dan **ranking provide
 - **Alias model**: `mimo` → xiaomi-mimo v2.6-flash, `mimo-pro` → mimo-v2.6-pro, `mimo-ultra` → mimo-v2.6-pro-ultraspeed.
 - **Quota Tracker** & **Usage** (grafik 24 jam, rincian per provider/hari, ekspor JSON). Quota **MiMo Token Plan** (`xiaomi-tokenplan`): self-track otomatis dari `usageHistory` + opsional console-cookie / limit paket untuk bar presisi.
 - **Combo & Vision Adapter**, **Endpoint & Key**.
+- **Panduan operasional lengkap**: [`docs/PANDUAN.md`](docs/PANDUAN.md) (cara pakai tiap fitur + troubleshooting + otomasi terpasang).
 - **Token Saver dihapus total (Ronde-40)** — RTK, Headroom, PXPIPE, Caveman, Ponytail dibersihkan dari halaman, API, pipeline chat, settings, dan CLI.
 
 ### CLI Tools (32)
