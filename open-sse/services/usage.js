@@ -19,6 +19,7 @@ import { getOpenCodeZenUsage } from "./usage/opencode-zen.js";
 import { getGroqUsage } from "./usage/groq.js";
 import { getZedUsage } from "./usage/zed.js";
 import { getXiaomiMimoUsage } from "./usage/xiaomi-mimo.js";
+import { getXiaomiTokenplanUsage } from "./usage/xiaomi-tokenplan.js";
 import { resolveQoderCredentials } from "./qoderModels.js";
 import { getGlmUsage } from "./usage/glm.js";
 import { getCommandCodeUsage } from "./usage/commandcode.js";
@@ -61,6 +62,8 @@ const USAGE_HANDLERS = {
   groq: (c) => getGroqUsage(c.apiKey, c.proxyOptions),
   zed: (c) => getZedUsage(c.accessToken, c.providerSpecificData, c.proxyOptions),
   "xiaomi-mimo": (c) => getXiaomiMimoUsage(c.accessToken, c.providerSpecificData, c.proxyOptions),
+  // Token Plan (tp- key): console-cookie quota, else self-tracked from our usageHistory.
+  "xiaomi-tokenplan": (c) => getXiaomiTokenplanUsage(c.apiKey, c.providerSpecificData, c.proxyOptions, c.connection),
   commandcode: (c) => getCommandCodeUsage(c.apiKey, c.proxyOptions),
 };
 
@@ -83,6 +86,7 @@ export async function getUsageForProvider(connection, proxyOptions = null, optio
   if (!handler) return { message: `Usage API not implemented for ${provider}` };
   return await handler({
     provider,
+    connection,
     accessToken,
     apiKey,
     providerSpecificData,

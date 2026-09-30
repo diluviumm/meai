@@ -746,6 +746,28 @@ export function parseQuotaData(provider, data) {
         }
         break;
 
+      case "xiaomi-tokenplan":
+        // Token Plan quota comes either from the Xiaomi console cookie (real
+        // used/limit/percent + period end) or from local self-tracking (total
+        // may be 0/unlimited until the plan limit is configured). Forward the
+        // full row — remainingPercentage, unlimited flag, unit and resetAt — so
+        // the table renders bars/reset countdowns instead of a bare number.
+        if (data.quotas) {
+          Object.entries(data.quotas).forEach(([name, quota]) => {
+            normalizedQuotas.push({
+              name,
+              used: quota.used || 0,
+              total: quota.total || 0,
+              unit: quota.unit || "tokens",
+              unlimited: quota.unlimited === true || !(quota.total > 0),
+              remainingPercentage: quota.remainingPercentage,
+              resetAt: quota.resetAt || null,
+              recurring: quota.resetAt ? true : undefined,
+            });
+          });
+        }
+        break;
+
       default:
         // Generic fallback for unknown providers
         if (data.quotas) {

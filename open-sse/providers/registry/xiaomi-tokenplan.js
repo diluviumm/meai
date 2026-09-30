@@ -36,6 +36,10 @@ export default {
     },
     defaultRegion: "sgp",
   },
+  // Quota Tracker: tp- key cannot read the plan quota (404 on every path, see
+  // XiaomiMiMo/MiMo-Code#2495) — the usage fetcher self-tracks from local
+  // usageHistory and upgrades to the real console quota when a cookie is set.
+  features: { usage: true, usageApikey: true },
   // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
   // baseUrl omitted — region-dynamic, resolved in the executor's buildUrl.
   transports: [

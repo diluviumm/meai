@@ -339,6 +339,7 @@ export default function ProviderLimits() {
         quotas: parsedQuotas,
         plan: data.plan || null,
         message: data.message || null,
+        hint: data.hint || null, // token plan: panduan cara dapat kuota riil
         raw: data,
       };
 
@@ -1477,6 +1478,11 @@ export default function ProviderLimits() {
                 {quota?.message && !error && !isLoading && (
                   <p className="mt-2 px-1 text-[10px] leading-relaxed text-text-muted">
                     {quota.message}
+                  </p>
+                )}
+                {quota?.hint && !error && !isLoading && (
+                  <p className="mt-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-[10px] leading-relaxed text-amber-700 dark:text-amber-400">
+                    {quota.hint}
                   </p>
                 )}
                 {hiddenQuotaRows.length > 0 && (

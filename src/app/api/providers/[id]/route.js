@@ -75,6 +75,11 @@ export async function GET(request, { params }) {
     delete result.accessToken;
     delete result.refreshToken;
     delete result.idToken;
+    // Console cookie (MiMo Token Plan quota) is a session credential - never
+    // send it back to the browser; PUT keeps the stored value on "***".
+    if (result.providerSpecificData && result.providerSpecificData.mimoConsoleCookie) {
+      result.providerSpecificData = { ...result.providerSpecificData, mimoConsoleCookie: "***" };
+    }
 
     return NextResponse.json({ connection: result });
   } catch (error) {
@@ -136,8 +141,11 @@ export async function PUT(request, { params }) {
       )
     ) {
       updateData.providerSpecificData = {
-        ...(existing.providerSpecificData || {}),
-        ...(providerSpecificData || {}),
+          ...(existing.providerSpecificData || {}),
+          // "***" is the masked placeholder from GET - keep the stored cookie.
+          ...(providerSpecificData && providerSpecificData.mimoConsoleCookie === "***"
+            ? { ...providerSpecificData, mimoConsoleCookie: (existing.providerSpecificData || {}).mimoConsoleCookie }
+            : (providerSpecificData || {})),
       };
 
       if (proxyConfig.hasAnyProxyField) {

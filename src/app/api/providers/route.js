@@ -67,8 +67,12 @@ export async function GET() {
       const name = isCompatible
         ? (c.name || nodeNameMap[c.provider] || c.providerSpecificData?.nodeName || c.provider)
         : c.name;
+      const safePsd = c.providerSpecificData && c.providerSpecificData.mimoConsoleCookie
+        ? { ...c.providerSpecificData, mimoConsoleCookie: "***" }
+        : c.providerSpecificData;
       return {
         ...c,
+        providerSpecificData: safePsd,
         name,
         apiKey: undefined,
         accessToken: undefined,

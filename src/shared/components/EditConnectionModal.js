@@ -23,6 +23,9 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
   });
   const [cloudflareData, setCloudflareData] = useState({ accountId: "" });
   const [region, setRegion] = useState("");
+  // MiMo Token Plan quota tracker: console cookie (24h session) + plan limit
+  const [mimoConsoleCookie, setMimoConsoleCookie] = useState("");
+  const [planTotalTokens, setPlanTotalTokens] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [validating, setValidating] = useState(false);
@@ -48,6 +51,14 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
       if (connection.provider === "cloudflare-ai" && connection.providerSpecificData) {
         setCloudflareData({ accountId: connection.providerSpecificData.accountId || "" });
       }
+      if (connection.provider === "xiaomi-tokenplan" && connection.providerSpecificData) {
+        setMimoConsoleCookie(connection.providerSpecificData.mimoConsoleCookie || "");
+        setPlanTotalTokens(
+          connection.providerSpecificData.planTotalTokens
+            ? String(connection.providerSpecificData.planTotalTokens)
+            : "",
+        );
+      }
       // Load region for providers that support it (e.g. xiaomi-tokenplan)
       const providerCfg = AI_PROVIDERS?.[connection.provider];
       if (providerCfg?.regions) {
@@ -67,9 +78,21 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
     : false;
   const providerRegions = connection ? (AI_PROVIDERS?.[connection.provider]?.regions || null) : null;
 
-  // Build providerSpecificData for region-aware providers
+  // Build providerSpecificData for region-aware providers.
+  // MiMo Token Plan rows also carry the quota-tracker fields (console cookie,
+  // plan limit) — merged here so a region edit never drops them.
   const buildRegionSpecificData = () => {
-    if (providerRegions && region) return { ...((connection?.providerSpecificData) || {}), region };
+    const base = { ...((connection?.providerSpecificData) || {}) };
+    if (providerRegions && region) base.region = region;
+    if (connection?.provider === "xiaomi-tokenplan") {
+      const ck = mimoConsoleCookie.trim();
+      if (ck) base.mimoConsoleCookie = ck;
+      else delete base.mimoConsoleCookie;
+      const n = Number(String(planTotalTokens).replace(/[^0-9]/g, ""));
+      if (n > 0) base.planTotalTokens = n;
+      else delete base.planTotalTokens;
+    }
+    if (providerRegions && region) return base;
     return undefined;
   };
 
@@ -170,6 +193,9 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
       // Persist updated region for region-aware providers
       if (providerRegions && region) {
         updates.providerSpecificData = buildRegionSpecificData();
+      } else if (connection.provider === "xiaomi-tokenplan") {
+        const built = buildRegionSpecificData();
+        updates.providerSpecificData = built || { ...((connection?.providerSpecificData) || {}) };
       }
       
       await onSave(updates);
@@ -271,6 +297,35 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
             onChange={(e) => setRegion(e.target.value)}
             options={providerRegions.map((r) => ({ value: r.id, label: r.label }))}
           />
+        )}
+        {connection.provider === "xiaomi-tokenplan" && (
+          <div className="bg-sidebar/50 p-4 rounded-lg border border-accent/20">
+            <h3 className="font-semibold mb-1 text-sm">Quota Tracker</h3>
+            <p className="text-xs text-text-muted mb-3">
+              Xiaomi does not expose Token Plan quota to tp- keys. Paste the console
+              cookie to show the real plan quota, or set the plan&apos;s token limit to
+              turn local tracking into a progress bar. Without either, the card still
+              counts every token this gateway routes (automatic, no setup).
+            </p>
+            <div className="flex flex-col gap-3">
+              <Input
+                label="Console Cookie (optional, lasts ~24h)"
+                type="password"
+                value={mimoConsoleCookie}
+                onChange={(e) => setMimoConsoleCookie(e.target.value)}
+                placeholder="Paste the Cookie header from platform.xiaomimimo.com"
+                hint="DevTools -&gt; Network -&gt; any /api/v1 request -&gt; Request Headers -&gt; Cookie."
+              />
+              <Input
+                label="Plan total tokens (optional)"
+                type="number"
+                value={planTotalTokens}
+                onChange={(e) => setPlanTotalTokens(e.target.value)}
+                placeholder="e.g. 11000000000"
+                hint="Your subscription's token limit - enables the progress bar."
+              />
+            </div>
+          </div>
         )}
 
         {!isCompatible && !isAzure && !isCloudflareAi && (
