@@ -68,13 +68,13 @@ boleh menemui URL resmi (`github.com/decolua/9router`, `9router.com`) — selain
 - [ ] `curl -s localhost:20128/api/healthz` → `service: meai-mael-stack`.
 - [ ] Rebrand: `grep -rn "9router" src --include="*.js" | grep -v "github.com/decolua\|9router.com\|// " ` → 0 non-URL.
 - [ ] Keep-list provider utuh: settings `codebuddy-cn:true · opencode-go:false`.
-- [ ] Token savers tetap ON: `rtk · caveman(lite) · ponytail(lite) · headroom`.
+- [ ] Token savers TIDAK dihidupkan lagi: upstream membawa `rtk · caveman · ponytail · headroom` — fork ini menghapusnya (Ronde-40); saat merge, drop kembali komponen saver upstream.
 - [ ] Tema Noctalia: `.dark` vars di `globals.css` (`#141318` / `#c8bfff`).
 - [ ] Push `origin mael/fork` + gitleaks.
 
 ## 6. Conflict resolution policy (fork)
 
-- **Identitas fork menang** untuk: nama (MeAI), tema (Noctalia), keep-list, token-saver config,
+- **Identitas fork menang** untuk: nama (MeAI), tema (Noctalia), keep-list, penghapusan token-saver,
   keamanan (masking key), rate-limit/IP handling.
 - **Upstream menang** untuk: perbaikan bug routing/translator, provider registry baru,
   perbaikan performa — asalkan tidak menyentuh identitas.

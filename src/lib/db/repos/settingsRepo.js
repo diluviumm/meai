@@ -50,6 +50,26 @@ const DEFAULT_SETTINGS = {
   dnsToolEnabled: {},
 };
 
+// Ronde-40: Token Saver (RTK/Headroom/PXPIPE/Caveman/Ponytail) dihapus total
+// dari fork. Key lama di DB di-stripping saat merge supaya API tak pernah
+// mengembalikannya lagi — store bersih tanpa harus migrate baris lama.
+const REMOVED_TOKEN_SAVER_KEYS = [
+  "rtkEnabled",
+  "headroomEnabled", "headroomUrl", "headroomCompressUserMessages",
+  "headroomTimeoutMs", "headroomCodeAware", "headroomKompress",
+  "cavemanEnabled", "cavemanLevel",
+  "ponytailEnabled", "ponytailLevel",
+  "pxpipeEnabled", "pxpipeAutoInstall", "pxpipeMinChars", "pxpipeTimeoutMs",
+];
+
+function stripRemovedKeys(obj) {
+  let changed = false;
+  for (const key of REMOVED_TOKEN_SAVER_KEYS) {
+    if (key in obj) { delete obj[key]; changed = true; }
+  }
+  return changed;
+}
+
 async function readRaw() {
   const db = await getAdapter();
   const row = db.get(`SELECT data FROM settings WHERE id = 1`);
@@ -58,7 +78,9 @@ async function readRaw() {
 
 // Merge raw settings with defaults; backward-compat for missing keys
 export function mergeWithDefaults(raw) {
-  const merged = { ...DEFAULT_SETTINGS, ...(raw || {}) };
+  const clean = { ...(raw || {}) };
+  stripRemovedKeys(clean); // token-saver keys dilarang hidup lagi
+  const merged = { ...DEFAULT_SETTINGS, ...clean };
   for (const [key, defVal] of Object.entries(DEFAULT_SETTINGS)) {
     if (merged[key] === undefined) {
       if (
@@ -97,6 +119,7 @@ export async function updateSettings(updates) {
   db.transaction(function () {
     const row = db.get(`SELECT data FROM settings WHERE id = 1`);
     const current = row ? parseJson(row.data, {}) : {};
+    stripRemovedKeys(current); // self-healing: baris lama bersih saat disentuh
     next = { ...current, ...updates };
     db.run(
       `INSERT INTO settings(id, data) VALUES(1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data`,

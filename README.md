@@ -39,8 +39,9 @@ Katalog **free-tier** (pools, kuota, hitungan token/bulan) dan **ranking provide
 ).
 - **Combos**: gabungan beberapa provider/satu provider multi-model dengan fallback lintas-provider — combo `mael-mimo` memuat `opencode-go:mimo-v2.6-{flash,pro,ultraspeed}` + `xiaomi-mimo:mimo-v2.6-{flash,pro,pro-ultraspeed}`.
 - **Alias model**: `mimo` → xiaomi-mimo v2.6-flash, `mimo-pro` → mimo-v2.6-pro, `mimo-ultra` → mimo-v2.6-pro-ultraspeed.
-- **Quota Tracker** & **Usage** (grafik 24 jam, rincian per provider/hari, ekspor JSON).
-- **Token Saver**, **Combo & Vision Adapter**, **Endpoint & Key**.
+- **Quota Tracker** & **Usage** (grafik 24 jam, rincian per provider/hari, ekspor JSON). Quota **MiMo Token Plan** (`xiaomi-tokenplan`): self-track otomatis dari `usageHistory` + opsional console-cookie / limit paket untuk bar presisi.
+- **Combo & Vision Adapter**, **Endpoint & Key**.
+- **Token Saver dihapus total (Ronde-40)** — RTK, Headroom, PXPIPE, Caveman, Ponytail dibersihkan dari halaman, API, pipeline chat, settings, dan CLI.
 
 ### CLI Tools (32)
 `claude` · `codex` · `cline` · `copilot` · `cursor` · `continue` · `kilo` · `roo` · `amp` · `qwen` · `opencode` · `openclaw` · `droid` · `hermes` · `cowork` · `devin` · `crush` · `forge` · `smelt` · `codewhale` · `jcode` · `pi` · `omp` · `opendesign` · `antigravity`(MITM) · `kiro`(MITM) + **baru**: `aider` · `goose` · `zoo-code` · `open-interpreter` · `warp-ai` · `deyin-ai`.
