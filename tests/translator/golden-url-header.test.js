@@ -31,6 +31,7 @@ function sanitize(headers) {
       ? v.replace(/Bearer .+/, "Bearer <TOK>")
           .replace(/sk-test-APIKEY|tok-test-ACCESS/g, "<CRED>")
           .replace(/kimi-\d{10,}/g, "kimi-<TS>")
+          .replace(/^v\d+\.\d+\.\d+$/, "v<NODE>")  // versi node dinamis (CI vs lokal)
       : v;
   }
   return out;

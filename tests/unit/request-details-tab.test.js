@@ -136,9 +136,18 @@ describe("backupDbLite — excludes requestDetails, keeps critical data", () => 
     const dest = backupDbLite(adapter, backupDir);
     expect(fs.existsSync(dest)).toBe(true);
 
-    // Open backup and assert requestDetails is empty, settings present
-    const Database = (await import("better-sqlite3")).default;
-    const bak = new Database(dest);
+    // Open backup and assert requestDetails is empty, settings present.
+    // better-sqlite3 di-compile untuk ABI node pemilik (22) — kalau suite dijalankan
+    // dengan node berbeda (26) modulnya gagal load. node:sqlite built-in jadi
+    // fallback portabel agar test tetap memverifikasi isi backup.
+    let bak;
+    try {
+      const Database = (await import("better-sqlite3")).default;
+      bak = new Database(dest);
+    } catch {
+      const { DatabaseSync } = await import("node:sqlite");
+      bak = new DatabaseSync(dest);
+    }
     try {
       // requestDetails is fully excluded — table must not exist in the backup
       const rdTable = bak.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='requestDetails'").get();
