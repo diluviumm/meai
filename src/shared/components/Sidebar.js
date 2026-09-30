@@ -12,6 +12,7 @@ import Modal from "./Modal";
 
 
 const navItems = [
+  { href: "/dashboard/overview", label: "Overview", icon: "space_dashboard" },
   { href: "/dashboard/endpoint", label: "Endpoint & Key", icon: "api" },
   { href: "/dashboard/providers", label: "Providers", icon: "dns" },
   // { href: "/dashboard/basic-chat", label: "Basic Chat", icon: "chat" }, // Hidden

@@ -79,7 +79,7 @@ function Delta({ value, tone, compareLabel }) {
     ? "text-text-subtle"
     : tone === "cost"
       ? up
-        ? "text-error"
+        ? "text-danger"
         : "text-success"
       : "text-text-muted";
   const sign = flat ? "" : up ? "+" : "";
@@ -252,7 +252,7 @@ export default function OverviewCards({ stats, prev, compareLabel }) {
       <KpiCard
         label="p95 Latency"
         value={p95Text}
-        colorClass={p95 == null ? "text-text-muted" : p95 < 5000 ? "text-success" : p95 < 15000 ? "text-warning" : "text-error"}
+        colorClass={p95 == null ? "text-text-muted" : p95 < 5000 ? "text-success" : p95 < 15000 ? "text-warning" : "text-danger"}
         title={p95 == null ? "Belum ada sampel latensi" : `p95 ${fmtMs(p95)} · p50 ${fmtMs(p50)} · ${latSamples} sampel`}
         series={[]}
         caption={

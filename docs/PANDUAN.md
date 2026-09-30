@@ -6,6 +6,25 @@ bermasalah**.
 
 ---
 
+## 0. Overview (pusat kendali)
+
+`/dashboard/overview` — menu pertama, tepat di atas Endpoint & Key. Satu layar
+berisi seluruh visualisasi gateway, semua otomatis refresh tiap 30 detik:
+
+| Panel | Sumber data | Cara membaca |
+|---|---|---|
+| KPI strip (Requests · Tokens · Cost · p95 Latency · Providers) | `/api/usage/stats` | nilai + sparkline tren pada periode terpilih; p95 merah bila ≥15 dtk |
+| Penggunaan Gateway (area chart) | `/api/usage/chart` | hover untuk token & request per interval; puncak periode ditandai |
+| Top Models | `byModel` dari stats | bar proporsional token; request & cost ikut tertulis |
+| Provider Health | `/api/providers/client` | titik hijau=available, merah=unavailable, abu=belum diuji; error terakhir tampil |
+| Budget Harian (donat) | `settings.costBudgetDaily` vs cost hari ini | kuning >80%, merah bila lewat anggaran |
+| Distribusi Latensi | `latency.p50/p95` | ekor distribusi — p95 = yang dirasakan pengguna |
+| Aktivitas Terakhir | `recentRequests` | 6 request terakhir (waktu, model, provider, token, cost) |
+
+Semua angka berasal dari gateway (tanpa angka karangan); bila belum ada data
+tampil "–" atau empty-state yang jelas. Tombol periode (Today/24h/7D/30D)
+mengubah semua panel sekaligus.
+
 ## 1. Endpoint & Key
 
 **Fungsi:** menampilkan base URL gateway + API key untuk disuntikkan ke tool.

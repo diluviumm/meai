@@ -105,8 +105,8 @@ export default function IFlowCookieModal({ isOpen, onSuccess, onClose }) {
             </div>
 
             {error && (
-              <div className="p-3 bg-error/10 border border-error/20 rounded-lg">
-                <p className="text-sm text-error">{error}</p>
+              <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg">
+                <p className="text-sm text-danger">{error}</p>
               </div>
             )}
 

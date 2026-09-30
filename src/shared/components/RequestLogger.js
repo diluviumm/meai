@@ -100,7 +100,7 @@ export default function RequestLogger() {
                       <td className="px-3 py-1.5 border-r border-border text-right text-primary">{parts[4]}</td>
                       <td className="px-3 py-1.5 border-r border-border text-right text-success">{parts[5]}</td>
                       <td className={`px-3 py-1.5 font-bold ${isSuccess ? 'text-success' :
-                          isFailed ? 'text-error' :
+                          isFailed ? 'text-danger' :
                             'text-primary animate-pulse'
                         }`}>
                         {status}
