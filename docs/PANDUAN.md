@@ -22,8 +22,17 @@ berisi seluruh visualisasi gateway, semua otomatis refresh tiap 30 detik:
 | Aktivitas Terakhir | `recentRequests` | 6 request terakhir (waktu, model, provider, token, cost) |
 
 Semua angka berasal dari gateway (tanpa angka karangan); bila belum ada data
-tampil "–" atau empty-state yang jelas. Tombol periode (Today/24h/7D/30D)
-mengubah semua panel sekaligus.
+tampil "–" atau empty-state yang jelas. Tombol periode **Today/24h/7D/30D/Custom**
+mengubah semua panel sekaligus:
+
+- **Custom** → pilih rentang tanggal (Dari/Sampai) lalu **Terapkan**. Divalidasi
+  klien & server: format YYYY-MM-DD, urutan tanggal benar, maksimal 731 hari.
+  Tombol Custom lagi menonaktifkan kembali ke preset.
+- **Delta "vs sebelumnya"** pada KPI Requests/Tokens/Cost memakai jendela
+  periode sebelumnya yang sama panjang (helper `previousPeriodQuery`) — panah
+  ▲/▼ + persentase dihitung dari data gateway, bukan perkiraan.
+- **Interaksi 3D** (hover kartu) hanya di perangkat pointer halus (mouse) —
+  GPU transform, dimatikan otomatis pada sentuhan & `prefers-reduced-motion`.
 
 ## 1. Endpoint & Key
 

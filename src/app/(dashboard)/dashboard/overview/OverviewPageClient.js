@@ -23,6 +23,22 @@ import {
 } from "recharts";
 import Link from "next/link";
 import Card from "@/shared/components/Card";
+import { previousPeriodQuery, MAX_CUSTOM_RANGE_DAYS } from "@/lib/usageRange";
+
+/** Query string untuk stats/chart — period preset ATAU custom (from/to). */
+const apiQuery = (period, range) => {
+  if (period !== "custom") return `period=${period}`;
+  // Custom tanpa rentang valid = keadaan transient (panel baru dibuka) →
+  // jatuh ke 7d, JANGAN kirim period=custom polos (server400).
+  return range?.from && range?.to
+    ? `period=custom&from=${range.from}&to=${range.to}`
+    : "period=7d";
+};
+
+/** Delta % vs periode sebelumnya (null bila pembanding nol/tak ada). */
+const deltaPct = (cur, prev) =>
+  typeof prev === "number" && prev > 0 && typeof cur === "number" ? ((cur - prev) / prev) * 100 : null;
+const fmtDelta = (d) => (d == null ? null : `${d >= 0 ? "▲" : "▼"} ${Math.abs(d) < 0.1 ? "<0.1" : Math.abs(d).toFixed(1)}%`);
 
 const PERIODS = [
   { value: "today", label: "Today" },
@@ -66,16 +82,23 @@ function Sparkline({ data, stroke = "var(--color-brand-500)" }) {
 }
 
 /** Kartu KPI: label + nilai + caption + sparkline. */
-function Kpi({ label, value, caption, tone, series, title, href }) {
+function Kpi({ label, value, caption, tone, series, title, href, delta }) {
   const toneClass =
     tone === "good" ? "text-success" : tone === "warn" ? "text-warning" : tone === "bad" ? "text-danger" : "text-text";
   const body = (
-    <Card padding="sm" className="min-w-0">
+    <Card padding="sm" className="min-w-0" hover>
       <div className="flex items-start justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">{label}</span>
       </div>
       <div className={`mt-1 text-2xl font-bold tabular-nums ${toneClass}`}>{value}</div>
-      <div className="mt-0.5 min-h-[16px] text-[11px] text-text-muted">{caption}</div>
+      <div className="mt-0.5 flex min-h-[16px] flex-wrap items-baseline gap-x-2 text-[11px] text-text-muted">
+        <span>{caption}</span>
+        {delta && (
+          <span className={`font-semibold tabular-nums ${delta.good ? "text-success" : "text-warning"}`} title={delta.title}>
+            {delta.text} vs sebelumnya
+          </span>
+        )}
+      </div>
       <Sparkline data={series} />
     </Card>
   );
@@ -193,7 +216,12 @@ function LatencyBar({ p50, p95, samples }) {
 // ── komponen utama ───────────────────────────────────────────────────────────
 export default function OverviewPageClient() {
   const [period, setPeriod] = useState("today");
+  const [range, setRange] = useState({ from: "", to: "" }); // rentang AKTIF (baru dipakai load saat valid)
+  const [draft, setDraft] = useState({ from: "", to: "" }); // form date picker (tak memicu fetch)
+  const [rangeErr, setRangeErr] = useState(""); // validasi klien custom
+  const [statsPrev, setStatsPrev] = useState(null); // pembanding delta
   const [stats, setStats] = useState(null);
+  const [statsToday, setStatsToday] = useState(null); // budget HARIAN selalu from hari ini
   const [chart, setChart] = useState([]);
   const [conns, setConns] = useState(null); // providers/client
   const [tunnel, setTunnel] = useState(null);
@@ -212,15 +240,23 @@ export default function OverviewPageClient() {
         setLoading(true);
       }
       try {
-        const [s, c, pc, t, se, h] = await Promise.all([
-          fetch(`/api/usage/stats?period=${period}`).then((r) => (r.ok ? r.json() : null)),
-          fetch(`/api/usage/chart?period=${period}`).then((r) => (r.ok ? r.json() : null)),
+        const q = apiQuery(period, range);
+        const prevQ = previousPeriodQuery(period, range); // helper resmi — jendela sebelumnya
+        const [s, c, pc, t, se, h, sp, st] = await Promise.all([
+          fetch(`/api/usage/stats?${q}`).then((r) => (r.ok ? r.json() : null)),
+          fetch(`/api/usage/chart?${q}`).then((r) => (r.ok ? r.json() : null)),
           fetch("/api/providers/client").then((r) => (r.ok ? r.json() : null)),
           fetch("/api/tunnel/status").then((r) => (r.ok ? r.json() : null)),
           fetch("/api/settings").then((r) => (r.ok ? r.json() : null)),
           fetch("/api/healthz").then((r) => (r.ok ? r.json() : { ok: false })),
+          prevQ
+            ? fetch(`/api/usage/stats?${prevQ}`).then((r) => (r.ok ? r.json() : null))
+            : Promise.resolve(null),
+          fetch("/api/usage/stats?period=today").then((r) => (r.ok ? r.json() : null)),
         ]);
+        setStatsToday(st);
         setStats(s);
+        setStatsPrev(sp);
         setChart(Array.isArray(c) ? c : []);
         setConns(pc);
         setTunnel(t);
@@ -234,7 +270,7 @@ export default function OverviewPageClient() {
         setNow(Date.now());
       }
     },
-    [period],
+    [period, range],
   );
 
   useEffect(() => {
@@ -251,7 +287,42 @@ export default function OverviewPageClient() {
     };
   }, [load]);
 
+  // Reveal-on-scroll (GPU: opacity+translateY) — hormati prefers-reduced-motion
+  // (CSS repo sudah mematikan transisi bila reduced).
+  const dataReady = stats != null; // dep statis utk observer (bukan ekspresi kompleks)
+  useEffect(() => {
+    const els = document.querySelectorAll(".reveal-up");
+    if (!("IntersectionObserver" in window)) {
+      els.forEach((el) => el.classList.add("is-visible"));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-visible");
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { rootMargin: "-40px 0px" },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [chart.length, dataReady]);
+
   // ── derivasi (semua dari data API, tanpa angka karangan) ──
+  // Delta vs periode sebelumnya (previousPeriodQuery) — Requests/Tokens/Cost saja.
+  const dReq = deltaPct(stats?.totalRequests, statsPrev?.totalRequests);
+  const dTokCur = (stats?.totalPromptTokens || 0) + (stats?.totalCompletionTokens || 0);
+  const dTokPrev = statsPrev ? (statsPrev.totalPromptTokens || 0) + (statsPrev.totalCompletionTokens || 0) : null;
+  const dTok = deltaPct(dTokCur, dTokPrev);
+  const dCost = deltaPct(stats?.totalCost, statsPrev?.totalCost);
+  const mkDelta = (d) =>
+    d == null
+      ? null
+      : { text: fmtDelta(d), good: d <= 0, title: "dibanding periode sebelumnya yang sama panjang" };
+
   const sparkReq = useMemo(() => chart.map((d) => d.requests), [chart]);
   const sparkTok = useMemo(() => chart.map((d) => d.tokens), [chart]);
   const sparkCost = useMemo(() => chart.map((d) => d.cost), [chart]);
@@ -275,7 +346,9 @@ export default function OverviewPageClient() {
   const activeConns = connsList.filter((c) => c.isActive);
 
   const budget = typeof settings?.costBudgetDaily === "number" ? settings.costBudgetDaily : 0;
-  const used = stats?.totalCost || 0;
+  // Budget HARIAN = biaya hari INI (statsToday) — bukan total periode terpilih
+  // (saat Custom/7D angka periode ≠ angka hari ini; membandingkannya menyesatkan).
+  const used = statsToday?.totalCost || 0;
 
   const lat = stats?.latency || { p50: null, p95: null, samples: 0 };
 
@@ -303,12 +376,15 @@ export default function OverviewPageClient() {
             <span className={`h-1.5 w-1.5 rounded-full ${gatewayOk ? "animate-pulse bg-success" : "bg-danger"}`} />
             {gatewayOk ? "Gateway Live" : "Gateway Down"}
           </span>
-          <div className="flex overflow-hidden rounded-lg border border-border-subtle bg-surface text-xs">
+          <div className="flex flex-wrap overflow-hidden rounded-lg border border-border-subtle bg-surface text-xs">
             {PERIODS.map((p) => (
               <button
                 key={p.value}
                 type="button"
-                onClick={() => setPeriod(p.value)}
+                onClick={() => {
+                  setPeriod(p.value);
+                  setRangeErr("");
+                }}
                 className={`px-3 py-1.5 font-medium transition-colors ${
                   period === p.value ? "bg-brand-500 text-white" : "text-text-muted hover:bg-surface-2"
                 }`}
@@ -316,9 +392,92 @@ export default function OverviewPageClient() {
                 {p.label}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => {
+                if (period === "custom") {
+                  setPeriod("today"); // toggle mati → kembali ke preset
+                  setRangeErr("");
+                } else {
+                  setPeriod("custom");
+                  if (!draft.from) {
+                    // preset awal: 7 hari terakhir (lokal, bukan UTC) —
+                    // isi draft DAN range aktif sekaligus agar fetch pertama
+                    // langsung valid (tanpa 400 period=custom polos).
+                    const t = new Date();
+                    const f = new Date();
+                    f.setDate(t.getDate() - 6);
+                    const iso = (d) =>
+                      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                    const preset = { from: iso(f), to: iso(t) };
+                    setDraft(preset);
+                    setRange(preset);
+                  }
+                }
+              }}
+              className={`px-3 py-1.5 font-medium transition-colors ${
+                period === "custom" ? "bg-brand-500 text-white" : "text-text-muted hover:bg-surface-2"
+              }`}
+            >
+              Custom
+            </button>
           </div>
         </div>
       </header>
+
+      {/* ── Panel custom period (rentang tanggal, divalidasi klien & server) ── */}
+      {period === "custom" && (
+        <div className="fade-in flex flex-wrap items-end gap-3 rounded-xl border border-border-subtle bg-surface px-4 py-3 shadow-[var(--shadow-soft)]">
+          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+            Dari
+            <input
+              type="date"
+              value={draft.from}
+              max={draft.to || undefined}
+              onChange={(e) => {
+                setDraft((r) => ({ ...r, from: e.target.value }));
+                setRangeErr("");
+              }}
+              className="rounded-lg border border-border-subtle bg-surface-2 px-2 py-1.5 text-sm text-text outline-none focus:border-brand-500"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+            Sampai
+            <input
+              type="date"
+              value={draft.to}
+              min={draft.from || undefined}
+              onChange={(e) => {
+                setDraft((r) => ({ ...r, to: e.target.value }));
+                setRangeErr("");
+              }}
+              className="rounded-lg border border-border-subtle bg-surface-2 px-2 py-1.5 text-sm text-text outline-none focus:border-brand-500"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              if (!draft.from || !draft.to) return setRangeErr("Isi kedua tanggal.");
+              const a2 = Date.parse(`${draft.from}T00:00:00`);
+              const b2 = Date.parse(`${draft.to}T00:00:00`);
+              if (!Number.isFinite(a2) || !Number.isFinite(b2)) return setRangeErr("Tanggal tidak valid.");
+              if (b2 < a2) return setRangeErr("Tanggal 'Dari' melebihi 'Sampai'.");
+              const days = Math.floor((b2 - a2) / 86400000) + 1;
+              if (days > MAX_CUSTOM_RANGE_DAYS)
+                return setRangeErr(`Maksimal ${MAX_CUSTOM_RANGE_DAYS} hari (≈2 tahun).`);
+              setRangeErr("");
+              setRange({ ...draft }); // hanya rentang valid → memicu load via dependensi useCallback
+            }}
+            className="rounded-lg bg-brand-500 px-4 py-1.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-brand-600"
+          >
+            Terapkan
+          </button>
+          <span className="text-[11px] text-text-subtle">
+            Maks {MAX_CUSTOM_RANGE_DAYS} hari · format YYYY-MM-DD (divalidasi server juga)
+          </span>
+          {rangeErr && <span className="w-full text-[12px] font-medium text-danger">{rangeErr}</span>}
+        </div>
+      )}
 
       {err && (
         <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
@@ -330,28 +489,39 @@ export default function OverviewPageClient() {
       )}
 
       {/* ── KPI strip ── */}
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+      <section className="reveal-up grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <Kpi
           label="Requests"
           value={loading ? "…" : fmtInt(stats?.totalRequests)}
-          caption={`periode ${PERIODS.find((p) => p.value === period)?.label}`}
+          caption={
+          period === "custom"
+            ? `rentang ${range.from || "?"} → ${range.to || "?"}`
+            : `periode ${PERIODS.find((p) => p.value === period)?.label || period}`
+        }
           series={sparkReq}
-          href={`/dashboard/usage?period=${period}`}
+          delta={mkDelta(dReq)}
+          href={`/dashboard/usage?${apiQuery(period, range)}`}
         />
         <Kpi
           label="Tokens"
           value={loading ? "…" : fmtInt((stats?.totalPromptTokens || 0) + (stats?.totalCompletionTokens || 0))}
           caption={`input ${fmtInt(stats?.totalPromptTokens)} · output ${fmtInt(stats?.totalCompletionTokens)}`}
           series={sparkTok}
-          href={`/dashboard/usage?period=${period}`}
+          delta={mkDelta(dTok)}
+          href={`/dashboard/usage?${apiQuery(period, range)}`}
         />
         <Kpi
           label="Est. Cost"
           value={loading ? "…" : fmtUsd(stats?.totalCost)}
-          caption={budget > 0 ? `budget harian ${fmtUsd(budget)}` : "estimasi dari tarif token"}
-          tone={budget > 0 && used > budget ? "bad" : undefined}
+          caption={
+            budget > 0 && period === "today"
+              ? `budget harian ${fmtUsd(budget)}`
+              : "estimasi dari tarif token"
+          }
+          tone={period === "today" && budget > 0 && used > budget ? "bad" : undefined}
           series={sparkCost}
-          href={`/dashboard/usage?period=${period}`}
+          delta={mkDelta(dCost)}
+          href={`/dashboard/usage?${apiQuery(period, range)}`}
         />
         <Kpi
           label="p95 Latency"
@@ -359,7 +529,7 @@ export default function OverviewPageClient() {
           caption={lat.samples ? `p50 ${fmtMs(lat.p50)} · ${lat.samples} sampel` : "belum ada sampel"}
           tone={lat.p95 == null ? undefined : lat.p95 < 5000 ? "good" : lat.p95 < 15000 ? "warn" : "bad"}
           title={`p95 ${fmtMs(lat.p95)} · p50 ${fmtMs(lat.p50)} · ${lat.samples} sampel`}
-          href={`/dashboard/usage?period=${period}`}
+          href={`/dashboard/usage?${apiQuery(period, range)}`}
         />
         <Kpi
           label="Providers"
@@ -371,7 +541,7 @@ export default function OverviewPageClient() {
       </section>
 
       {/* ── Hero chart ── */}
-      <Card padding="sm" title="Penggunaan Gateway" subtitle="Token & request per interval — hover untuk detail"
+      <Card padding="sm" title="Penggunaan Gateway" hover subtitle="Token & request per interval — hover untuk detail"
         action={<span className="text-[11px] text-text-muted">puncak {fmtInt(chartMax)} token</span>}>
         <div className="h-[260px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -401,8 +571,8 @@ export default function OverviewPageClient() {
       </Card>
 
       {/* ── Top models + Provider health ── */}
-      <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <Card padding="sm" title="Top Models" subtitle="Kontribusi token pada periode terpilih">
+      <section className="reveal-up grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Card padding="sm" title="Top Models" hover subtitle="Kontribusi token pada periode terpilih">
           {topModels.length === 0 ? (
             <p className="py-6 text-center text-sm text-text-muted">Belum ada request pada periode ini.</p>
           ) : (
@@ -427,7 +597,7 @@ export default function OverviewPageClient() {
           )}
         </Card>
 
-        <Card padding="sm" title="Provider Health" subtitle={`${activeConns.length} koneksi aktif dari ${connsList.length}`}>
+        <Card padding="sm" title="Provider Health" hover subtitle={`${activeConns.length} koneksi aktif dari ${connsList.length}`}>
           {connsList.length === 0 ? (
             <p className="py-6 text-center text-sm text-text-muted">Belum ada koneksi provider.</p>
           ) : (
@@ -465,12 +635,12 @@ export default function OverviewPageClient() {
       </section>
 
       {/* ── Budget radial + Latency ── */}
-      <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <Card padding="sm" title="Budget Harian" subtitle="Estimasi biaya hari ini vs anggaran">
+      <section className="reveal-up grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Card padding="sm" title="Budget Harian" hover subtitle="Estimasi biaya hari ini vs anggaran">
           <BudgetRadial used={used} budget={budget} />
         </Card>
 
-        <Card padding="sm" title="Distribusi Latensi" subtitle="Sebaran waktu respons gateway">
+        <Card padding="sm" title="Distribusi Latensi" hover subtitle="Sebaran waktu respons gateway">
           <LatencyBar p50={lat.p50} p95={lat.p95} samples={lat.samples} />
           <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border-subtle pt-3 text-center">
             <div>
@@ -492,7 +662,7 @@ export default function OverviewPageClient() {
       </section>
 
       {/* ── Aktivitas terakhir ── */}
-      <Card padding="sm" title="Aktivitas Terakhir" subtitle={`${recent.length} request terakhir tercatat`}>
+      <Card padding="sm" title="Aktivitas Terakhir" hover subtitle={`${recent.length} request terakhir tercatat`}>
         {recent.length === 0 ? (
           <p className="py-4 text-center text-sm text-text-muted">Belum ada aktivitas.</p>
         ) : (
