@@ -163,6 +163,7 @@ export default function ProviderLimitCard({
                 label={quota.name}
                 used={quota.used}
                 total={quota.total}
+                unit={quota.unit || "requests"}
                 percentage={percentage}
                 unlimited={unlimited}
                 resetTime={quota.resetAt}

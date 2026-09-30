@@ -86,11 +86,11 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
     if (providerRegions && region) base.region = region;
     if (connection?.provider === "xiaomi-tokenplan") {
       const ck = mimoConsoleCookie.trim();
-      if (ck) base.mimoConsoleCookie = ck;
-      else delete base.mimoConsoleCookie;
+      // nilainya null = tanda "hapus" eksplisit — merge di route memakai spread,
+      // jadi delete saja tidak cukup (nilai lama di existing tetap menang).
+      base.mimoConsoleCookie = ck || null;
       const n = Number(String(planTotalTokens).replace(/[^0-9]/g, ""));
-      if (n > 0) base.planTotalTokens = n;
-      else delete base.planTotalTokens;
+      base.planTotalTokens = n > 0 ? n : null;
     }
     if (providerRegions && region) return base;
     return undefined;

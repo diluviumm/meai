@@ -140,13 +140,18 @@ export async function PUT(request, { params }) {
         proxyPoolResult.hasProxyPoolField
       )
     ) {
-      updateData.providerSpecificData = {
+      // "***" = masked placeholder from GET → keep the stored cookie.
+      // null   = explicit clear (modal sends null when an input is emptied)
+      //          → filtered out after the merge so the key truly disappears.
+      const incomingPsd = providerSpecificData && providerSpecificData.mimoConsoleCookie === "***"
+        ? { ...providerSpecificData, mimoConsoleCookie: (existing.providerSpecificData || {}).mimoConsoleCookie }
+        : (providerSpecificData || {});
+      updateData.providerSpecificData = Object.fromEntries(
+        Object.entries({
           ...(existing.providerSpecificData || {}),
-          // "***" is the masked placeholder from GET - keep the stored cookie.
-          ...(providerSpecificData && providerSpecificData.mimoConsoleCookie === "***"
-            ? { ...providerSpecificData, mimoConsoleCookie: (existing.providerSpecificData || {}).mimoConsoleCookie }
-            : (providerSpecificData || {})),
-      };
+          ...incomingPsd,
+        }).filter(([, v]) => v !== null),
+      );
 
       if (proxyConfig.hasAnyProxyField) {
         updateData.providerSpecificData.connectionProxyEnabled = proxyConfig.connectionProxyEnabled;

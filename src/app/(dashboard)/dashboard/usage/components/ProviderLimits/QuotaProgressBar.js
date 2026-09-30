@@ -71,6 +71,7 @@ export default function QuotaProgressBar({
   unlimited = false,
   resetTime = null,
   recurring = true,
+  unit = "requests",
 }) {
   const colors = getColorClasses(percentage);
   const countdown = formatResetTime(resetTime);
@@ -111,7 +112,7 @@ export default function QuotaProgressBar({
       {/* Usage details and countdown */}
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-text-muted">
         <span>
-          {used.toLocaleString()} / {total.toLocaleString()} requests
+          {used.toLocaleString()} / {total.toLocaleString()} {unit}
         </span>
         {countdown !== "-" && (
           <div className="flex items-center gap-1">

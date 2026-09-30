@@ -228,10 +228,10 @@ export default function QuotaTable({
                     }
                   >
                     {isUnlimited
-                      ? `${quota.used.toLocaleString()} used · Unlimited`
+                      ? `${quota.used.toLocaleString()}${quota.unit ? ` ${quota.unit}` : ""} used · Unlimited`
                       : isCreditBalance
                       ? `Credit: ${quota.total.toFixed(2)} ${quota.currency || ""}`
-                      : `${quota.used.toLocaleString()} / ${quota.total > 0 ? quota.total.toLocaleString() : "∞"}`}
+                      : `${quota.used.toLocaleString()}${quota.unit ? ` ${quota.unit}` : ""} / ${quota.total > 0 ? `${quota.total.toLocaleString()}${quota.unit ? ` ${quota.unit}` : ""}` : "∞"}`}
                   </span>
                   <span className={`font-medium ${isUnlimited ? "text-green-600 dark:text-green-400" : isCreditBalance ? "text-blue-600 dark:text-blue-400" : colors.text} shrink-0`}>
                     {isUnlimited ? "Unlimited" : isCreditBalance ? "" : `${quota.remaining}% free`}
