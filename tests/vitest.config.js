@@ -18,6 +18,11 @@ export default defineConfig({
     exclude: ["**/node_modules/**", "**/.claude/**", "**/dist/**"],
     // Allow many it.concurrent cases (real provider smoke runs ~50 providers in parallel)
     maxConcurrency: 60,
+    // Ronde-41: default 5s terlalu ketat utk import dinamis module besar saat
+    // mesin multi-tenant (browser agent + cron embed jalan bersamaan) — import
+    // yang biasanya 0.8-2.2s bisa melompat >5s → STACK_TRACE_ERROR/timeout palsu.
+    testTimeout: 15000,
+    hookTimeout: 15000,
     // Suppress noisy console output from handlers under test
     silent: false,
   },

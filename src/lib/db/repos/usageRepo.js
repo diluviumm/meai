@@ -285,7 +285,7 @@ export async function saveRequestUsage(entry) {
           entry.timestamp, entry.provider || null, entry.model || null,
           entry.connectionId || null, entry.apiKey || null, entry.endpoint || null,
           promptTokens, completionTokens, entry.cost || 0, entry.status || "ok",
-          stringifyJson(tokens), stringifyJson({}),
+          stringifyJson(tokens), stringifyJson(entry.latency ? { latency: entry.latency } : {}),
         ]
       );
 
@@ -420,6 +420,8 @@ export async function getUsageStats(period = "all", opts = {}) {
     activeRequests: [],
     recentRequests,
     errorProvider: (Date.now() - lastErrorProvider.ts < 10000) ? lastErrorProvider.provider : "",
+    // Ronde-41: p50/p95 latency dari meta.latency (usageHistory) — lokal, tanpa outbound.
+    latency: { p50: null, p95: null, samples: 0 },
   };
 
   // Active requests
@@ -700,6 +702,37 @@ export async function getUsageStats(period = "all", opts = {}) {
   }
 
   stats.totalRequests = Object.values(stats.byProvider).reduce((sum, p) => sum + (p.requests || 0), 0);
+  // ── Ronde-41: latensi p50/p95 (kriteria industri: ukur ekor, bukan rata-rata) ──
+  // Sumber: meta.latency.total pada usageHistory dalam jendela periode yang sama.
+  try {
+    const latCutoff = period === "today"
+      ? (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })()
+      : period === "24h"
+        ? new Date(Date.now() - PERIOD_MS["24h"]).toISOString()
+        : period === "7d" ? new Date(Date.now() - PERIOD_MS["7d"]).toISOString()
+        : period === "30d" ? new Date(Date.now() - PERIOD_MS["30d"]).toISOString()
+        : period === "60d" ? new Date(Date.now() - PERIOD_MS["60d"]).toISOString()
+        : customFrom || null;
+    const latRows = latCutoff
+      ? db.all(`SELECT meta FROM usageHistory WHERE timestamp >= ? ORDER BY id DESC LIMIT 5000`, [latCutoff])
+      : db.all(`SELECT meta FROM usageHistory ORDER BY id DESC LIMIT 5000`);
+    const samples = [];
+    for (const r of latRows) {
+      const m = parseJson(r.meta, null);
+      const t = m?.latency?.total;
+      if (typeof t === "number" && Number.isFinite(t) && t >= 0) samples.push(t);
+    }
+    if (samples.length) {
+      samples.sort((a, b) => a - b);
+      const q = (p) => samples[Math.min(samples.length - 1, Math.max(0, Math.round(p * (samples.length - 1))))];
+      stats.latency = {
+        p50: q(0.5),
+        p95: q(0.95),
+        samples: samples.length,
+      };
+    }
+  } catch { /* latensi bersifat informatif — gagal tak boleh merusak stats */ }
+
   return stats;
 }
 

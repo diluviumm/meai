@@ -148,6 +148,9 @@ KpiCard.propTypes = {
   compareLabel: PropTypes.string,
 };
 
+// Ronde-41: format latensi — <1s ditampil ms, selanjutnya detik 1 desimal.
+const fmtMs = (ms) => (ms == null ? null : ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`);
+
 /** KPI + sparkline live (last10Minutes) — ronde-26; sejajar + caption EN + cached series — ronde-28 */
 export default function OverviewCards({ stats, prev, compareLabel }) {
   const last = stats?.last10Minutes || [];
@@ -186,9 +189,14 @@ export default function OverviewCards({ stats, prev, compareLabel }) {
   const dCached = pct(stats.totalCachedTokens, prev?.totalCachedTokens);
   const dOut = pct(stats.totalCompletionTokens, prev?.totalCompletionTokens);
   const dCost = pct(stats.totalCost, prev?.totalCost);
+  // Ronde-41: p95/p50 latency (ms) dari usageHistory.meta — null bila belum ada sampel.
+  const p95 = stats.latency?.p95 ?? null;
+  const p50 = stats.latency?.p50 ?? null;
+  const latSamples = stats.latency?.samples || 0;
+  const p95Text = p95 == null ? "–" : fmtMs(p95);
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:gap-4">
+    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 sm:gap-4">
       <KpiCard
         label="Total Requests"
         value={fmt(stats.totalRequests)}
@@ -240,6 +248,18 @@ export default function OverviewCards({ stats, prev, compareLabel }) {
         delta={dCost}
         deltaTone="cost"
         compareLabel={compareLabel}
+      />
+      <KpiCard
+        label="p95 Latency"
+        value={p95Text}
+        colorClass={p95 == null ? "text-text-muted" : p95 < 5000 ? "text-success" : p95 < 15000 ? "text-warning" : "text-error"}
+        title={p95 == null ? "Belum ada sampel latensi" : `p95 ${fmtMs(p95)} · p50 ${fmtMs(p50)} · ${latSamples} sampel`}
+        series={[]}
+        caption={
+          p95 == null
+            ? "terisi otomatis tiap request"
+            : `p50 ${fmtMs(p50)} · ${latSamples} sampel`
+        }
       />
     </div>
   );

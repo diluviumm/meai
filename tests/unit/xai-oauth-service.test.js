@@ -4,7 +4,12 @@ describe("xai/oauth service", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.restoreAllMocks();
-    vi.stubGlobal("fetch", vi.fn());
+    // Default response → panggilan latar tak pernah menerima undefined
+    // (akar "Cannot read properties of undefined (reading 'ok')").
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) }),
+    );
   });
 
   it("validates discovered endpoints are https x.ai URLs", async () => {
@@ -22,12 +27,17 @@ describe("xai/oauth service", () => {
   });
 
   it("discovers endpoints without custom user-agent headers", async () => {
-    fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        authorization_endpoint: "https://auth.x.ai/oauth2/authorize",
-        token_endpoint: "https://auth.x.ai/oauth2/token",
-      }),
+    fetch.mockImplementation(async (url) => {
+      if (String(url).includes("openid-configuration")) {
+        return {
+          ok: true,
+          json: async () => ({
+            authorization_endpoint: "https://auth.x.ai/oauth2/authorize",
+            token_endpoint: "https://auth.x.ai/oauth2/token",
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
     });
 
     const { discoverEndpoints } = await import("../../src/lib/oauth/services/xai.js");
@@ -64,12 +74,17 @@ describe("xai/oauth service", () => {
   });
 
   it("generates dashboard auth data with CLIProxyAPI PKCE size and discovered endpoints", async () => {
-    fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        authorization_endpoint: "https://auth.x.ai/oauth2/authorize-from-discovery",
-        token_endpoint: "https://auth.x.ai/oauth2/token-from-discovery",
-      }),
+    fetch.mockImplementation(async (url) => {
+      if (String(url).includes("openid-configuration")) {
+        return {
+          ok: true,
+          json: async () => ({
+            authorization_endpoint: "https://auth.x.ai/oauth2/authorize-from-discovery",
+            token_endpoint: "https://auth.x.ai/oauth2/token-from-discovery",
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
     });
 
     const { generateAuthData } = await import("../../src/lib/oauth/providers.js");
@@ -86,22 +101,31 @@ describe("xai/oauth service", () => {
 
   it("exchanges dashboard codes against the discovered xAI token endpoint", async () => {
     const fetchMock = fetch;
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          authorization_endpoint: "https://auth.x.ai/oauth2/authorize",
-          token_endpoint: "https://auth.x.ai/oauth2/token-from-discovery",
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          access_token: "access-token",
-          refresh_token: "refresh-token",
-          expires_in: 3600,
-        }),
-      });
+    // Router by URL: tahan terhadap discovery terpanggil berapa pun kali
+    // (urutan mock sekali-pakai = akar flaky saat suite penuh).
+    fetchMock.mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes("openid-configuration")) {
+        return {
+          ok: true,
+          json: async () => ({
+            authorization_endpoint: "https://auth.x.ai/oauth2/authorize",
+            token_endpoint: "https://auth.x.ai/oauth2/token-from-discovery",
+          }),
+        };
+      }
+      if (u.includes("/oauth2/token")) {
+        return {
+          ok: true,
+          json: async () => ({
+            access_token: "access-token",
+            refresh_token: "refresh-token",
+            expires_in: 3600,
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
 
     const { exchangeTokens } = await import("../../src/lib/oauth/providers.js");
     const tokens = await exchangeTokens(
@@ -112,10 +136,12 @@ describe("xai/oauth service", () => {
       "state-1"
     );
 
-    expect(fetchMock.mock.calls[1][0]).toBe("https://auth.x.ai/oauth2/token-from-discovery");
-    expect(fetchMock.mock.calls[1][1].body.get("grant_type")).toBe("authorization_code");
-    expect(fetchMock.mock.calls[1][1].body.get("code")).toBe("auth-code");
-    expect(fetchMock.mock.calls[1][1].body.get("code_verifier")).toBe("verifier-1");
+    const tokenCall = fetchMock.mock.calls.find((c) => String(c[0]).includes("/oauth2/token"));
+    expect(tokenCall, "token endpoint harus dipanggil").toBeTruthy();
+    expect(tokenCall[0]).toBe("https://auth.x.ai/oauth2/token-from-discovery");
+    expect(tokenCall[1].body.get("grant_type")).toBe("authorization_code");
+    expect(tokenCall[1].body.get("code")).toBe("auth-code");
+    expect(tokenCall[1].body.get("code_verifier")).toBe("verifier-1");
     expect(tokens).toMatchObject({
       accessToken: "access-token",
       refreshToken: "refresh-token",
