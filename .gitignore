@@ -110,3 +110,4 @@ debug.log
 PLAN-FITUR.md
 .jspace/
 tests/.vitest-data/
+.vitest-verify.json
