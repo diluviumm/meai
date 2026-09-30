@@ -21,6 +21,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import Link from "next/link";
 import Card from "@/shared/components/Card";
 
 const PERIODS = [
@@ -65,11 +66,11 @@ function Sparkline({ data, stroke = "var(--color-brand-500)" }) {
 }
 
 /** Kartu KPI: label + nilai + caption + sparkline. */
-function Kpi({ label, value, caption, tone, series, title }) {
+function Kpi({ label, value, caption, tone, series, title, href }) {
   const toneClass =
     tone === "good" ? "text-success" : tone === "warn" ? "text-warning" : tone === "bad" ? "text-danger" : "text-text";
-  return (
-    <Card padding="sm" className="min-w-0" title={title ? undefined : undefined}>
+  const body = (
+    <Card padding="sm" className="min-w-0">
       <div className="flex items-start justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">{label}</span>
       </div>
@@ -77,6 +78,14 @@ function Kpi({ label, value, caption, tone, series, title }) {
       <div className="mt-0.5 min-h-[16px] text-[11px] text-text-muted">{caption}</div>
       <Sparkline data={series} />
     </Card>
+  );
+  // drill-in (riset KPI card 2026): kartu dapat diklik ke halaman detail
+  return href ? (
+    <Link href={href} className="block transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-brand-500" title={title}>
+      {body}
+    </Link>
+  ) : (
+    body
   );
 }
 
@@ -327,12 +336,14 @@ export default function OverviewPageClient() {
           value={loading ? "…" : fmtInt(stats?.totalRequests)}
           caption={`periode ${PERIODS.find((p) => p.value === period)?.label}`}
           series={sparkReq}
+          href={`/dashboard/usage?period=${period}`}
         />
         <Kpi
           label="Tokens"
           value={loading ? "…" : fmtInt((stats?.totalPromptTokens || 0) + (stats?.totalCompletionTokens || 0))}
           caption={`input ${fmtInt(stats?.totalPromptTokens)} · output ${fmtInt(stats?.totalCompletionTokens)}`}
           series={sparkTok}
+          href={`/dashboard/usage?period=${period}`}
         />
         <Kpi
           label="Est. Cost"
@@ -340,6 +351,7 @@ export default function OverviewPageClient() {
           caption={budget > 0 ? `budget harian ${fmtUsd(budget)}` : "estimasi dari tarif token"}
           tone={budget > 0 && used > budget ? "bad" : undefined}
           series={sparkCost}
+          href={`/dashboard/usage?period=${period}`}
         />
         <Kpi
           label="p95 Latency"
@@ -347,12 +359,14 @@ export default function OverviewPageClient() {
           caption={lat.samples ? `p50 ${fmtMs(lat.p50)} · ${lat.samples} sampel` : "belum ada sampel"}
           tone={lat.p95 == null ? undefined : lat.p95 < 5000 ? "good" : lat.p95 < 15000 ? "warn" : "bad"}
           title={`p95 ${fmtMs(lat.p95)} · p50 ${fmtMs(lat.p50)} · ${lat.samples} sampel`}
+          href={`/dashboard/usage?period=${period}`}
         />
         <Kpi
           label="Providers"
           value={loading ? "…" : `${activeConns.length}/${connsList.length}`}
           caption={`${connsList.filter((c) => c.testStatus === "available").length} teruji available`}
           tone={activeConns.length === 0 ? "bad" : undefined}
+          href="/dashboard/providers"
         />
       </section>
 
