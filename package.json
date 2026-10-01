@@ -1,6 +1,6 @@
 {
   "name": "meai",
-  "version": "0.5.91",
+  "version": "0.5.95",
   "description": "MeAI web dashboard",
   "private": true,
   "scripts": {
