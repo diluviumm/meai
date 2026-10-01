@@ -14,6 +14,18 @@ const CREDS = { connectionId: "opencode-free-tool-choice-test" };
 const INPUT = [{ type: "message", role: "user", content: [{ type: "input_text", text: "hi" }] }];
 const TOOLS = [{ type: "function", name: "get_weather", description: "w", parameters: { type: "object", properties: {} } }];
 
+// Kontrak baru sejak upstream 822aa958 (tool cloaking): request Responses yang
+// sudah membawa tools disamarkan — tool asli UTUH di posisi pertama, sisanya
+// stub "unavailable" agar free tier tidak menolak. Demote tool_choice tetap
+// diuji terpisah; di sini yang dipastikan: tool asli tidak pernah hilang/diubah.
+const expectToolsPreserved = (tools) => {
+  expect(tools[0]).toEqual(TOOLS[0]);
+  for (const t of tools.slice(1)) {
+    expect(t.type).toBe("function");
+    expect(t.description).toContain("currently unavailable");
+  }
+};
+
 function responsesBody(model, tool_choice) {
   const body = { model, input: structuredClone(INPUT), tools: structuredClone(TOOLS) };
   if (tool_choice !== undefined) body.tool_choice = tool_choice;
@@ -36,7 +48,7 @@ describe("opencode Free 1.3 tool_choice auto-only", () => {
       const body = responsesBody(model, structuredClone(choice));
       const out = new OpenCodeExecutor().transformRequest(model, body, true, CREDS);
       expect(out.tool_choice).toBe("auto");
-      expect(out.tools).toEqual(TOOLS);
+      expectToolsPreserved(out.tools);
       expect(out.input).toEqual(INPUT);
     }
   });
@@ -46,14 +58,18 @@ describe("opencode Free 1.3 tool_choice auto-only", () => {
       FREE_13, responsesBody(FREE_13, "auto"), true, CREDS,
     );
     expect(autoOut.tool_choice).toBe("auto");
-    expect(autoOut.tools).toEqual(TOOLS);
+    expectToolsPreserved(autoOut.tools);
     expect(autoOut.input).toEqual(INPUT);
 
     const absentOut = new OpenCodeExecutor().transformRequest(
       FREE_13, responsesBody(FREE_13, undefined), true, CREDS,
     );
-    expect("tool_choice" in absentOut).toBe(false);
-    expect(absentOut.tools).toEqual(TOOLS);
+    // Quirk auto-only kini SELALU menyuntik tool_choice eksplisit (opencode.js
+    // forceAutoToolChoiceModels → body.tool_choice = "auto") — lebih ketat dari
+    // perilaku lama yang membiarkan absen; keduanya lolos upstream, tapi sintesis
+    // eksplisit dipilih supaya bebas ambigu.
+    expect(absentOut.tool_choice).toBe("auto");
+    expectToolsPreserved(absentOut.tools);
     expect(absentOut.input).toEqual(INPUT);
   });
 
@@ -84,7 +100,7 @@ describe("opencode Free 1.3 tool_choice auto-only", () => {
     const sent = JSON.parse(actualInit.body);
     expect(sent.tool_choice).toBe("auto");
     expect(sent.model).toBe(FREE_13);
-    expect(sent.tools).toEqual(TOOLS);
+    expectToolsPreserved(sent.tools);
     expect(sent.input).toEqual(INPUT);
   });
 });

@@ -195,9 +195,11 @@ describe("openaiToCommandCodeRequest — native image blocks", () => {
       }],
     }, true);
 
+    // f4f06f29 menambah field mediaType (kompat) di samping mimeType —
+    // keduanya membawa MIME yang sama; sinkronkan ekspektasi dgn kontrak baru.
     expect(out.params.messages[0].content).toEqual([
       { type: "text", text: "what color?" },
-      { type: "image", image: DATA_URI, mimeType: "image/png" },
+      { type: "image", image: DATA_URI, mimeType: "image/png", mediaType: "image/png" },
     ]);
   });
 
@@ -212,7 +214,7 @@ describe("openaiToCommandCodeRequest — native image blocks", () => {
     }, true);
 
     expect(out.params.messages[0].content).toEqual([
-      { type: "image", image: DATA_URI, mimeType: "image/png" },
+      { type: "image", image: DATA_URI, mimeType: "image/png", mediaType: "image/png" },
     ]);
   });
 

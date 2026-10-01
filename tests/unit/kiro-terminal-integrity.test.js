@@ -710,6 +710,18 @@ describe("Kiro terminal integrity recovery", () => {
       .mockResolvedValueOnce(new Response("unauthorized", {
         status: 401,
         statusText: "Unauthorized"
+      }))
+      // Ronde-45: 401 = status failover antar-surface (KIRO_ENDPOINT_FALLBACK_
+      // STATUSES), jadi integrity retry meng-walk SEMUA surface (q → codewhisperer
+      // → kiro.dev, lihat getOrderedBaseUrls) sebelum menyerah — sediakan 401 utk
+      // masing-masing supaya test tak menunggu fetch tak-termock (dulu timeout 15s).
+      .mockResolvedValueOnce(new Response("unauthorized", {
+        status: 401,
+        statusText: "Unauthorized"
+      }))
+      .mockResolvedValueOnce(new Response("unauthorized", {
+        status: 401,
+        statusText: "Unauthorized"
       }));
 
     const result = await execute();
@@ -721,8 +733,21 @@ describe("Kiro terminal integrity recovery", () => {
   });
 
   it("bounds the retry HTTP error body", async () => {
+    // Ronde-45: seperti test di atas — integrity retry meng-walk SEMUA surface
+    // (failover 401), jadi sediakan 401 utk setiap surface sebelum menyerah.
+    // Body BESAR diletakkan di mock TERAKHIR (surface final) karena readResponsePrefix
+    // membaca response gagal TERAKHIR setelah semua surface di-walk (failover 401) —
+    // di situlah pembatasan ukuran benar-benar diuji.
     fetchMock
       .mockResolvedValueOnce(response([]))
+      .mockResolvedValueOnce(new Response("unauthorized", {
+        status: 401,
+        statusText: "Unauthorized"
+      }))
+      .mockResolvedValueOnce(new Response("unauthorized", {
+        status: 401,
+        statusText: "Unauthorized"
+      }))
       .mockResolvedValueOnce(new Response(`error-start-${"x".repeat(10_000)}-error-tail`, {
         status: 401,
         statusText: "Unauthorized"

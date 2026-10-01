@@ -25,12 +25,16 @@ afterAll(() => {
 
 describe("DB Concurrency — atomic safety", () => {
   it("100 parallel saveRequestUsage → no count loss", async () => {
+    // ENTRI WAJIB UNIK — saveRequestUsage punya dedup BY-DESIGN (upstream
+    // ec096d2a/0d216689): timestamp+provider+model+tokens identik dianggap
+    // double-fire streaming dan di-skip. Yang diuji di sini: atomic write saat
+    // paralel, jadi tiap entri dibuat berbeda (prompt_tokens bervariasi).
     const N = 100;
     const promises = [];
     for (let i = 0; i < N; i++) {
       promises.push(db.saveRequestUsage({
         provider: "openai", model: "gpt-4", connectionId: "c1",
-        tokens: { prompt_tokens: 10, completion_tokens: 5 },
+        tokens: { prompt_tokens: 10 + i, completion_tokens: 5 },
         endpoint: "/v1/chat", status: "ok",
       }));
     }
@@ -39,7 +43,7 @@ describe("DB Concurrency — atomic safety", () => {
     const stats = await db.getUsageStats("24h");
     expect(stats.totalRequests).toBe(N);
     expect(stats.byProvider.openai.requests).toBe(N);
-    expect(stats.byProvider.openai.promptTokens).toBe(N * 10);
+    expect(stats.byProvider.openai.promptTokens).toBe(N * 10 + ((N - 1) * N) / 2);
 
     const hist = await db.getUsageHistory({ provider: "openai" });
     expect(hist.length).toBe(N);
@@ -71,7 +75,8 @@ describe("DB Concurrency — atomic safety", () => {
     for (let i = 0; i < 50; i++) {
       ops.push(db.saveRequestUsage({
         provider: "anthropic", model: `m-${i % 3}`, connectionId: "c2",
-        tokens: { prompt_tokens: 20 }, status: "ok",
+        // unik per loop — hindari dedup by-design (lihat test 1)
+        tokens: { prompt_tokens: 20 + i }, status: "ok",
       }));
       ops.push(db.setModelAlias(`a-${i}`, `target-${i}`));
       ops.push(db.disableModels("openai", [`d-${i}`]));
@@ -155,7 +160,8 @@ describe("DB Concurrency — atomic safety", () => {
     for (let i = 0; i < N; i++) {
       promises.push(db.saveRequestUsage({
         provider: "google", model: "gemini-pro", connectionId: "cG",
-        tokens: { prompt_tokens: 100, completion_tokens: 50 },
+        // unik per loop — hindari dedup by-design (lihat test 1)
+        tokens: { prompt_tokens: 100 + i, completion_tokens: 50 },
         status: "ok",
       }));
     }
@@ -165,7 +171,7 @@ describe("DB Concurrency — atomic safety", () => {
     const g = stats.byProvider.google;
     expect(g).toBeDefined();
     expect(g.requests).toBe(N);
-    expect(g.promptTokens).toBe(N * 100);
+    expect(g.promptTokens).toBe(N * 100 + ((N - 1) * N) / 2);
     expect(g.completionTokens).toBe(N * 50);
   });
 });

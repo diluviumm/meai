@@ -14,15 +14,22 @@ describe("normalizeClaudePassthrough — haiku adaptive thinking (docs 11 §1)",
     expect(out.thinking).toEqual({ type: "adaptive" });
   });
 
-  it("hoists mid-conversation system messages into top-level system", () => {
+  it("folds mid-conversation system messages into the neighbouring turn (cache-safe)", () => {
+    // Kontrak BARU (lihat formats/claude.js langkah 4): hoist ke body.system kini
+    // DITINGGALKAN karena menaruh konten volatil (counter/pengingat) di depan
+    // seluruh percakapan → membatalkan prefix cache tiap request. System di-fold
+    // in place ke turn tetangga — prefix cache stabil.
     const out = normalizeClaudePassthrough({
       messages: [
         { role: "user", content: "hi" },
         { role: "system", content: "be brief" },
       ],
     });
-    expect(out.system).toEqual([{ type: "text", text: "be brief" }]);
-    expect(out.messages.every((m) => m.role !== "system")).toBe(true);
+    expect(out.system).toBeUndefined(); // tak dihoist ke atas
+    expect(out.messages.every((m) => m.role !== "system")).toBe(true); // tak ada system tersisa
+    const user = out.messages.find((m) => m.role === "user");
+    const text = typeof user.content === "string" ? user.content : JSON.stringify(user.content);
+    expect(text).toContain("be brief"); // isi bertahan di turn tetangga
   });
 });
 

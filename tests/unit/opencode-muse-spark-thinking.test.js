@@ -214,14 +214,17 @@ describe("OpenCode Free Muse Spark thinking", () => {
     // User message, function_call, function_call_output, and next user message survive
     const types = out.input.map((item) => item.type);
     expect(types).toEqual(["message", "function_call", "function_call_output", "message"]);
-    // Tools flattened and empty properties added
-    expect(out.tools).toEqual([
-      {
-        type: "function",
-        name: "shell",
-        description: "Run shell command",
-        parameters: { type: "object", properties: {} },
-      },
-    ]);
+    // Tools flattened and empty properties added; sejak upstream 822aa958
+    // (tool cloaking) request Responses dgn tools juga ditempeli stub
+    // "currently unavailable" — tool asli harus tetap utuh di posisi pertama.
+    expect(out.tools[0]).toEqual({
+      type: "function",
+      name: "shell",
+      description: "Run shell command",
+      parameters: { type: "object", properties: {} },
+    });
+    for (const t of out.tools.slice(1)) {
+      expect(t.description).toContain("currently unavailable");
+    }
   });
 });

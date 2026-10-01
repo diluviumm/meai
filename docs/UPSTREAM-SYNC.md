@@ -79,3 +79,32 @@ boleh menemui URL resmi (`github.com/decolua/9router`, `9router.com`) — selain
 - **Upstream menang** untuk: perbaikan bug routing/translator, provider registry baru,
   perbaikan performa — asalkan tidak menyentuh identitas.
 - Selalu backup: `git stash list` / `git branch backup/pre-sync-<tanggal>`.
+
+## Modifikasi test fork vs `known-fails.txt` upstream (Ronde-45)
+
+Enam file test dimodifikasi fork setelah disinkronkan dengan kontrak kode yang
+telah berevolusi (semua test kini LULUS — 49 → 7 gagal). Saat sync berikutnya,
+**ambil versi fork** untuk file ini (upstream mencatatnya sebagai known-fail,
+bukan sebagai kontrak yang harus dikembalikan):
+
+- `tests/unit/oauth-cursor-auto-import.test.js` — 8 test disinkron (pesan baru,
+  key-chain fallback, graceful 200) + diuji dengan file SQLite NYATA (route kini
+  `require("better-sqlite3")` native yang tidak terjangkau `vi.mock`).
+- `tests/unit/db-concurrent.test.js` — entri paralel dibuat unik (dedup
+  by-design `ec096d2a` menganggap timestamp+tokens identik = double-fire).
+- `tests/unit/opencode-free-tool-choice.test.js` + `unit/opencode-muse-spark-thinking.test.js`
+  — tool cloaking `822aa958` (stub "currently unavailable" menyertai tool asli).
+- `tests/unit/windsurf-executor.test.js` — windsurf hidden by design (`8e04fe17`),
+  URL codeium, PROVIDERS.windsurf absen disengaja.
+- `tests/unit/executor-const-guard.test.js` — `3f9382de` menurunkan 429: 6→3.
+- `tests/unit/image-generation.test.js` — CODEX_CLI_VERSION 0.154→0.155.
+- `tests/unit/kiro-external-idp.test.js` — migrasi CodeWhisperer → surface q.*.
+- `tests/unit/kiro-terminal-integrity.test.js` — integrity retry kini meng-walk
+  SEMUA surface (failover 401) → mock 401 per surface, body besar di surface final.
+- `tests/unit/cursor-models.test.js` — transport HTTP/2 (mock `node:http2`,
+  default export, key "http2"+"node:http2").
+- Translator (bugs-toClaude/bug-gemini/thinking-unified/helpers-edge/
+  commandcode-to-openai/openai-to-commandcode) — sinkron kebocoran berkas;
+  `thinking-unified` gagal mengungkap **bug produksi nyata** yang diperbaiki:
+  `MODEL_CAPABILITIES["glm-5.2"]` kehilangan `thinkingEffortSupported` (lookup
+  exact menang atas pattern).

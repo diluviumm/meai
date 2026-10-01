@@ -105,8 +105,12 @@ describe("Kiro external_idp (CLIProxyAPI) import and refresh", () => {
     expect(headers.TokenType).toBe("EXTERNAL_IDP");
     expect(headers.tokentype).toBeUndefined();
 
+    // Migrasi AWS CodeWhisperer → Amazon Q: getOrderedBaseUrls memprioritaskan
+    // surface q.* untuk token external_idp/idc (komentar kiro.js:302-313 —
+    // kiro.dev dihilangkan dari posisi pertama, q/codewhisperer dicoba duluan;
+    // CLIRO parity). q kini surface pertama untuk keluarga token ini.
     expect(executor.buildUrl("claude-sonnet-4.5", true, 0, credentials)).toBe(
-      "https://codewhisperer.us-east-1.amazonaws.com/generateAssistantResponse"
+      "https://q.us-east-1.amazonaws.com/generateAssistantResponse"
     );
   });
 

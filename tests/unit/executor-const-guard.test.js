@@ -39,9 +39,11 @@ describe("provider baseUrl const (full path, no trailing slash)", () => {
   });
 });
 
-describe("antigravity retry (intentional change: 429=6, 503=3)", () => {
-  it("429 attempts = 6", () => {
-    expect(antigravity.transport.retry["429"].attempts).toBe(6);
+// 3f9382de (18 Jun, "Fix AG, Kiro, Xiaomi Provider") MENURUNKAN 429: 6→3
+// secara sengaja setelah test ini ditulis (aba4c45d, 15 Jun) — kode = kebenaran.
+describe("antigravity retry (3f9382de: 429=3, 503=3)", () => {
+  it("429 attempts = 3", () => {
+    expect(antigravity.transport.retry["429"].attempts).toBe(3);
   });
   it("503 attempts = 3", () => {
     expect(antigravity.transport.retry["503"].attempts).toBe(3);
