@@ -48,6 +48,8 @@ const DEFAULT_SETTINGS = {
   outboundNoProxy: "",
   mitmRouterBaseUrl: DEFAULT_MITM_ROUTER_BASE,
   dnsToolEnabled: {},
+  // Per-provider user header overrides applied at dispatch: { [providerId]: { headers: {..} } }
+  providerOverrides: {},
 };
 
 // Ronde-40: Token Saver (RTK/Headroom/PXPIPE/Caveman/Ponytail) dihapus total
