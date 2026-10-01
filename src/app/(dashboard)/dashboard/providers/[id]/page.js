@@ -1398,12 +1398,38 @@ export default function ProviderDetailPage() {
 }
 
   if (!providerInfo) {
+    // Ronde-47 — riset empty/error state 2026: pesan empatik + konteks (id yang
+    // dicari) + aksi yang jelas, dibungkus kartu (bukan teks hampa di tengah).
     return (
-      <div className="text-center py-20">
-        <p className="text-text-muted">Provider not found</p>
-        <Link href="/dashboard/providers" className="text-primary mt-4 inline-block">
-          Back to Providers
-        </Link>
+      <div className="flex justify-center px-4 py-14">
+        <Card padding="lg" className="w-full max-w-md text-center">
+          <span className="material-symbols-outlined text-[44px] text-text-subtle">
+            search_off
+          </span>
+          <h2 className="mt-3 text-base font-semibold text-text">Provider tidak ditemukan</h2>
+          <p className="mt-1.5 text-sm text-text-muted">
+            Tidak ada penyedia dengan id{" "}
+            <code className="rounded bg-surface-2 px-1.5 py-0.5 text-xs text-text">{providerId}</code>.
+            Kemungkinan koneksi sudah dihapus atau tautan dibuka dari sesi lama.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            <Link
+              href="/dashboard/providers"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+            >
+              <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+              Kembali ke Providers
+            </Link>
+            <button
+              type="button"
+              onClick={() => globalThis.location.reload()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-surface-2"
+            >
+              <span className="material-symbols-outlined text-[16px]">refresh</span>
+              Muat ulang
+            </button>
+          </div>
+        </Card>
       </div>
     );
   }
