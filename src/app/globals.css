@@ -475,21 +475,21 @@ button:disabled,
 
 /* Topology: router card pulse (no flying rings) + electric edge beam */
 @keyframes topology-router-pulse {
+  /* Ronde-44 — glow lebih ringan: radius/opasitas diturunkan supaya kotak node
+     tak menutupi titik awal garis penghubung; identitas kuning→cyan dipertahankan. */
   0%, 100% {
     transform: scale(1);
     box-shadow:
-      0 0 8px #fde047,
-      0 0 20px color-mix(in srgb, var(--color-primary) 65%, transparent),
-      0 0 32px rgba(34, 211, 238, 0.4),
-      inset 0 0 10px rgba(253, 224, 71, 0.3);
+      0 0 5px rgba(253, 224, 71, 0.5),
+      0 0 12px color-mix(in srgb, var(--color-primary) 40%, transparent),
+      0 0 18px rgba(34, 211, 238, 0.2);
   }
   50% {
-    transform: scale(1.06);
+    transform: scale(1.04);
     box-shadow:
-      0 0 14px #fef08a,
-      0 0 28px #facc15,
-      0 0 44px rgba(34, 211, 238, 0.6),
-      inset 0 0 14px rgba(255, 255, 255, 0.25);
+      0 0 8px rgba(254, 240, 138, 0.55),
+      0 0 16px rgba(250, 204, 21, 0.3),
+      0 0 24px rgba(34, 211, 238, 0.3);
   }
 }
 @keyframes topology-router-icon-shake {
@@ -673,4 +673,14 @@ button:disabled,
   .no-print { display: none !important; }
   a[href]::after { content: ""; }
   main { min-height: auto !important; }
+}
+
+/* ── Ronde-44 · Aksesibilitas fokus keyboard (WCAG 2.4.7 / riset 2026) ─────
+   77 pemakaian outline-none tanpa pengganti membuat navigasi Tab tak terlihat.
+   Aturan ini UNLAYERED (di luar @layer) sehingga mengalahkan .outline-none
+   (specificity seri, unlayered menang) HANYA saat fokus via keyboard —
+   klik tetap tak menampilkan outline. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
 }
