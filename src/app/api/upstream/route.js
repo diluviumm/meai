@@ -42,8 +42,36 @@ export async function GET(request) {
   }
   try {
     await git(["fetch", "upstream", "--quiet"], 45000);
-    const behind = parseInt((await git(["rev-list", "--count", "HEAD..upstream/master"])).trim(), 10) || 0;
-    const logRaw = await git(["log", "--pretty=format:%h|%ad|%s", "--date=short", "HEAD..upstream/master", "-n", "25"]);
+    // Ronde-46: hitungan PATCH-BASEN (git cherry), bukan sha-based rev-list.
+    // Fork menerapkan update via cherry-pick + resolusi manual → sha upstream
+    // TIDAK pernah masuk history → rev-list HEAD..upstream selamanya menunjukkan
+    // "N behind" walau semua patch sudah diterapkan (akar notifikasi tak pernah
+    // hilang). git cherry menandai '-' utk patch yang sudah ada; yang dihitung
+    // hanya '+' yang belum, dan sha yang sudah diterapkan dgn resolusi berbeda
+    // tercatat di ~/.hermes/state/meai-synced-upstream-shas.txt.
+    const syncedShas = new Set((() => {
+      try {
+        return fs
+          .readFileSync(path.join(os.homedir(), ".hermes/state/meai-synced-upstream-shas.txt"), "utf8")
+          .split("\n")
+          .map((l) => l.trim().split(/\s+/)[0])
+          .filter((x) => /^[0-9a-f]{40}$/.test(x));
+      } catch {
+        return [];
+      }
+    })());
+    const cherryRaw = await git(["cherry", "HEAD", "upstream/master"]);
+    const cherryLines = cherryRaw.trim() ? cherryRaw.trim().split("\n") : [];
+    const isPending = (line) => {
+      const [flag, sha] = line.split(/\s+/);
+      return flag === "+" && !syncedShas.has(sha);
+    };
+    const behind = cherryLines.filter(isPending).length;
+    // Daftar commit = yang benar2 belum masuk (konsisten dgn angka)
+    const pendingShas = cherryLines.filter(isPending).map((l) => l.split(/\s+/)[1]);
+    const logRaw = pendingShas.length
+      ? await git(["log", "--pretty=format:%h|%ad|%s", "--date=short", ...pendingShas.slice(0, 25)])
+      : "";
     const commits = logRaw.trim()
       ? logRaw.trim().split("\n").map((l) => {
           const [sha, date, ...msg] = l.split("|");

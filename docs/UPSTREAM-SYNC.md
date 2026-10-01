@@ -108,3 +108,34 @@ bukan sebagai kontrak yang harus dikembalikan):
   `thinking-unified` gagal mengungkap **bug produksi nyata** yang diperbaiki:
   `MODEL_CAPABILITIES["glm-5.2"]` kehilangan `thinkingEffortSupported` (lookup
   exact menang atas pattern).
+
+## Ronde-46 — Sync 41 commit upstream (v0.5.91 → v0.5.95) + fix akar notifikasi
+
+**Masalah lama:** banner "N commit upstream" tak pernah hilang walau update
+dijalankan — dua akar:
+1. `GET /api/upstream` memakai `git rev-list --count HEAD..upstream/master`
+   (SHA-BASEN) — cherry-pick tidak memasukkan sha upstream ke history fork,
+   jadi angkanya selamanya tinggi. Kini memakai **`git cherry HEAD upstream/master`**
+   (PATCH-BASEN): `-` = patch sudah ada, `+` = belum; sha yang diterapkan dgn
+   resolusi manual tercatat di `~/.hermes/state/meai-synced-upstream-shas.txt`
+   (WAJIB ditambah tiap resolusi konflik yang menghasilkan patch-id berbeda).
+2. Selective apply menahan ~32 commit ber-irisan (SKIP-REVIEW) — dibereskan
+   satu per satu pada ronde-46 (cherry-pick otomatis + resolusi manual).
+
+**Cara resolusi konflik yang terbukti (pakai lagi saat sync berikutnya):**
+- Irisan registry index.js → pertahankan versi fork, sisipkan provider baru
+  dgn nomor variabel lanjutan (p376, p377) — JANGAN pakai nomor upstream.
+- Baseline JSON (providers/alias) → REGENERASI, jangan merge manual:
+  `node tests/__baseline__/snapshot-providers.mjs` dan
+  `node tests/__baseline__/verify-alias.mjs --snapshot`.
+- Kode yang menyentuh token-saver (settingsRepo/chatCore) → HEAD menang mutlak;
+  hanya fungsi BARU upstream yang disisipkan (contoh: `providerOverrides`).
+- Test golden → update snapshot SETELAH memverifikasi perubahan berasal dari
+  patch upstream (mis. Grok CLI UA 1.0.44, versi internal 0.5.95).
+- `git checkout --theirs` HANYA untuk file yang seluruhnya boleh tertimpa;
+  file identitas (Sidebar, package.json) WAJIB merge manual/3-way.
+
+**Setelah sync wajib:** restart service (manifest chunk vs disk harus sinkron —
+rebuild tanpa restart = 500/MIME-error di semua halaman), lalu gate + verify +
+audits seperti biasa. Bukti ronde-46: gate hijau (12 all-known), verify ok:true,
+eslint 117 = baseline, text CLEAN, responsive 27/27, visual 18/18, banner behind:0.

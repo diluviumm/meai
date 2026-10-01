@@ -935,10 +935,10 @@ exports[`GOLDEN buildHeaders (default executor providers) > cline → headers (a
     "Authorization": "Bearer <TOK>",
     "Content-Type": "application/json",
     "HTTP-Referer": "https://cline.bot",
-    "User-Agent": "MeAI/0.5.91",
+    "User-Agent": "MeAI/0.5.95",
     "X-CLIENT-TYPE": "meai",
-    "X-CLIENT-VERSION": "0.5.91",
-    "X-CORE-VERSION": "0.5.91",
+    "X-CLIENT-VERSION": "0.5.95",
+    "X-CORE-VERSION": "0.5.95",
     "X-IS-MULTIROOT": "false",
     "X-PLATFORM": "linux",
     "X-PLATFORM-VERSION": "v<NODE>",
@@ -948,10 +948,10 @@ exports[`GOLDEN buildHeaders (default executor providers) > cline → headers (a
     "Authorization": "Bearer <TOK>",
     "Content-Type": "application/json",
     "HTTP-Referer": "https://cline.bot",
-    "User-Agent": "MeAI/0.5.91",
+    "User-Agent": "MeAI/0.5.95",
     "X-CLIENT-TYPE": "meai",
-    "X-CLIENT-VERSION": "0.5.91",
-    "X-CORE-VERSION": "0.5.91",
+    "X-CLIENT-VERSION": "0.5.95",
+    "X-CORE-VERSION": "0.5.95",
     "X-IS-MULTIROOT": "false",
     "X-PLATFORM": "linux",
     "X-PLATFORM-VERSION": "v<NODE>",
@@ -962,10 +962,10 @@ exports[`GOLDEN buildHeaders (default executor providers) > cline → headers (a
     "Authorization": "Bearer <TOK>",
     "Content-Type": "application/json",
     "HTTP-Referer": "https://cline.bot",
-    "User-Agent": "MeAI/0.5.91",
+    "User-Agent": "MeAI/0.5.95",
     "X-CLIENT-TYPE": "meai",
-    "X-CLIENT-VERSION": "0.5.91",
-    "X-CORE-VERSION": "0.5.91",
+    "X-CLIENT-VERSION": "0.5.95",
+    "X-CORE-VERSION": "0.5.95",
     "X-IS-MULTIROOT": "false",
     "X-PLATFORM": "linux",
     "X-PLATFORM-VERSION": "v<NODE>",
@@ -981,10 +981,10 @@ exports[`GOLDEN buildHeaders (default executor providers) > clinepass → header
     "Authorization": "Bearer <TOK>",
     "Content-Type": "application/json",
     "HTTP-Referer": "https://cline.bot",
-    "User-Agent": "MeAI/0.5.91",
+    "User-Agent": "MeAI/0.5.95",
     "X-CLIENT-TYPE": "meai",
-    "X-CLIENT-VERSION": "0.5.91",
-    "X-CORE-VERSION": "0.5.91",
+    "X-CLIENT-VERSION": "0.5.95",
+    "X-CORE-VERSION": "0.5.95",
     "X-IS-MULTIROOT": "false",
     "X-PLATFORM": "linux",
     "X-PLATFORM-VERSION": "v<NODE>",
@@ -994,10 +994,10 @@ exports[`GOLDEN buildHeaders (default executor providers) > clinepass → header
     "Authorization": "Bearer <TOK>",
     "Content-Type": "application/json",
     "HTTP-Referer": "https://cline.bot",
-    "User-Agent": "MeAI/0.5.91",
+    "User-Agent": "MeAI/0.5.95",
     "X-CLIENT-TYPE": "meai",
-    "X-CLIENT-VERSION": "0.5.91",
-    "X-CORE-VERSION": "0.5.91",
+    "X-CLIENT-VERSION": "0.5.95",
+    "X-CORE-VERSION": "0.5.95",
     "X-IS-MULTIROOT": "false",
     "X-PLATFORM": "linux",
     "X-PLATFORM-VERSION": "v<NODE>",
@@ -1008,10 +1008,10 @@ exports[`GOLDEN buildHeaders (default executor providers) > clinepass → header
     "Authorization": "Bearer <TOK>",
     "Content-Type": "application/json",
     "HTTP-Referer": "https://cline.bot",
-    "User-Agent": "MeAI/0.5.91",
+    "User-Agent": "MeAI/0.5.95",
     "X-CLIENT-TYPE": "meai",
-    "X-CLIENT-VERSION": "0.5.91",
-    "X-CORE-VERSION": "0.5.91",
+    "X-CLIENT-VERSION": "0.5.95",
+    "X-CORE-VERSION": "0.5.95",
     "X-IS-MULTIROOT": "false",
     "X-PLATFORM": "linux",
     "X-PLATFORM-VERSION": "v<NODE>",
@@ -2208,24 +2208,24 @@ exports[`GOLDEN buildHeaders (default executor providers) > grok-cli → headers
     "Accept": "text/event-stream",
     "Authorization": "Bearer <TOK>",
     "Content-Type": "application/json",
-    "User-Agent": "grok-shell/0.2.99 (linux; x86_64)",
+    "User-Agent": "grok-shell/1.0.44 (linux; x86_64)",
     "x-grok-client-identifier": "grok-shell",
-    "x-grok-client-version": "0.2.99",
+    "x-grok-client-version": "1.0.44",
   },
   "nonStream": {
     "Authorization": "Bearer <TOK>",
     "Content-Type": "application/json",
-    "User-Agent": "grok-shell/0.2.99 (linux; x86_64)",
+    "User-Agent": "grok-shell/1.0.44 (linux; x86_64)",
     "x-grok-client-identifier": "grok-shell",
-    "x-grok-client-version": "0.2.99",
+    "x-grok-client-version": "1.0.44",
   },
   "oauth": {
     "Accept": "text/event-stream",
     "Authorization": "Bearer <TOK>",
     "Content-Type": "application/json",
-    "User-Agent": "grok-shell/0.2.99 (linux; x86_64)",
+    "User-Agent": "grok-shell/1.0.44 (linux; x86_64)",
     "x-grok-client-identifier": "grok-shell",
-    "x-grok-client-version": "0.2.99",
+    "x-grok-client-version": "1.0.44",
   },
 }
 `;
@@ -2624,7 +2624,7 @@ exports[`GOLDEN buildHeaders (default executor providers) > kimi → headers (ap
     "X-Msh-Device-Model": "Linux x64",
     "X-Msh-Device-Name": "ish",
     "X-Msh-Platform": "meai",
-    "X-Msh-Version": "0.5.91",
+    "X-Msh-Version": "0.5.95",
     "x-api-key": "<CRED>",
   },
   "nonStream": {
@@ -2635,7 +2635,7 @@ exports[`GOLDEN buildHeaders (default executor providers) > kimi → headers (ap
     "X-Msh-Device-Model": "Linux x64",
     "X-Msh-Device-Name": "ish",
     "X-Msh-Platform": "meai",
-    "X-Msh-Version": "0.5.91",
+    "X-Msh-Version": "0.5.95",
     "x-api-key": "<CRED>",
   },
   "oauth": {
@@ -2647,7 +2647,7 @@ exports[`GOLDEN buildHeaders (default executor providers) > kimi → headers (ap
     "X-Msh-Device-Model": "Linux x64",
     "X-Msh-Device-Name": "ish",
     "X-Msh-Platform": "meai",
-    "X-Msh-Version": "0.5.91",
+    "X-Msh-Version": "0.5.95",
     "x-api-key": "<CRED>",
   },
 }
@@ -3326,6 +3326,26 @@ exports[`GOLDEN buildHeaders (default executor providers) > morph → headers (a
     "Accept": "text/event-stream",
     "Authorization": "Bearer <TOK>",
     "Content-Type": "application/json",
+  },
+}
+`;
+
+exports[`GOLDEN buildHeaders (default executor providers) > muse → headers (apiKey / oauth) 1`] = `
+{
+  "apiKey": {
+    "Accept": "text/event-stream",
+    "Authorization": "Bearer <TOK>",
+    "Content-Type": "application/json",
+  },
+  "nonStream": {
+    "Authorization": "Bearer <TOK>",
+    "Content-Type": "application/json",
+  },
+  "oauth": {
+    "Accept": "text/event-stream",
+    "Authorization": "Bearer <TOK>",
+    "Content-Type": "application/json",
+    "x-api-version": "1.0.0",
   },
 }
 `;
@@ -6619,6 +6639,13 @@ exports[`GOLDEN buildUrl (default executor providers) > morph → url (stream + 
 {
   "nonStream": "https://api.morphllm.com/v1/chat/completions",
   "stream": "https://api.morphllm.com/v1/chat/completions",
+}
+`;
+
+exports[`GOLDEN buildUrl (default executor providers) > muse → url (stream + non-stream) 1`] = `
+{
+  "nonStream": "https://api.meta.ai/v1/chat/completions",
+  "stream": "https://api.meta.ai/v1/chat/completions",
 }
 `;
 
