@@ -377,6 +377,7 @@ import p371 from "./watsonx.js";
 import p372 from "./x-search.js";
 import p373 from "./xquik-search.js";
 import p376 from "./v1m.js";
+import p377 from "./muse.js";
 export default [
   p0,
   p1,
@@ -755,4 +756,5 @@ export default [
   p373,
 
   p376,
+  p377,
 ];
