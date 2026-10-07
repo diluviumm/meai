@@ -378,6 +378,8 @@ import p372 from "./x-search.js";
 import p373 from "./xquik-search.js";
 import p376 from "./v1m.js";
 import p377 from "./muse.js";
+import p378 from "./minimax-code.js";
+import p379 from "./minimax-code-global.js";
 export default [
   p0,
   p1,
@@ -757,4 +759,6 @@ export default [
 
   p376,
   p377,
+  p378,
+  p379,
 ];

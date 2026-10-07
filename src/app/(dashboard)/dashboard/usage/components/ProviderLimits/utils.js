@@ -747,6 +747,28 @@ export function parseQuotaData(provider, data) {
         }
         break;
 
+      case "minimax-code":
+      case "minimax-code-global":
+        // Service already returns dashboard-shaped rows: a credits balance
+        // (isCreditBalance → 💰 with the amount as total) plus M Plan rate
+        // windows as 0-100 percent rows. Pass through, preserving extras.
+        if (data.quotas) {
+          Object.entries(data.quotas).forEach(([name, quota]) => {
+            normalizedQuotas.push({
+              name,
+              used: quota.used || 0,
+              total: quota.total || 0,
+              remaining: quota.remaining,
+              remainingPercentage: quota.remainingPercentage,
+              resetAt: quota.resetAt || null,
+              message: quota.message,
+              isCreditBalance: quota.isCreditBalance,
+              currency: quota.currency,
+            });
+          });
+        }
+        break;
+
       case "xiaomi-tokenplan":
         // Token Plan quota comes either from the Xiaomi console cookie (real
         // used/limit/percent + period end) or from local self-tracking (total
