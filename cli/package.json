@@ -1,6 +1,6 @@
 {
   "name": "meai",
-  "version": "0.5.95",
+  "version": "0.5.99",
   "description": "MeAI CLI - Start and manage MeAI server",
   "bin": {
     "meai": "./cli.js"
