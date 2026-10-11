@@ -21,6 +21,7 @@ import { getGroqUsage } from "./usage/groq.js";
 import { getZedUsage } from "./usage/zed.js";
 import { getXiaomiMimoUsage } from "./usage/xiaomi-mimo.js";
 import { getXiaomiTokenplanUsage } from "./usage/xiaomi-tokenplan.js";
+import { getCursorUsage } from "./usage/cursor.js";
 import { resolveQoderCredentials } from "./qoderModels.js";
 import { getGlmUsage } from "./usage/glm.js";
 import { getCommandCodeUsage } from "./usage/commandcode.js";
@@ -70,6 +71,7 @@ const USAGE_HANDLERS = {
   // Token Plan (tp- key): console-cookie quota, else self-tracked from our usageHistory.
   "xiaomi-tokenplan": (c) => getXiaomiTokenplanUsage(c.apiKey, c.providerSpecificData, c.proxyOptions, c.connection),
   commandcode: (c) => getCommandCodeUsage(c.apiKey, c.proxyOptions),
+  cursor: (c) => getCursorUsage(c.accessToken, c.providerSpecificData, c.proxyOptions),
 };
 
 // Qoder intl/CN share one usage path: PATs must be exchanged to a job token
