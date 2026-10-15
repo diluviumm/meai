@@ -93,8 +93,9 @@ export async function GET(request) {
  *  build + restart; proses independent dari meai.service (survive restart). */
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
-  if (body.action !== "apply") {
-    return NextResponse.json({ error: "action harus 'apply'" }, { status: 400 });
+  const action = body.action === "rebuild" ? "rebuild" : body.action === "apply" ? "apply" : null;
+  if (!action) {
+    return NextResponse.json({ error: "action harus 'apply' atau 'rebuild'" }, { status: 400 });
   }
   // tolak bila masih berjalan
   try {
@@ -115,9 +116,10 @@ export async function POST(request) {
       "--collect",
       "--unit=meai-fork-update",
       "--quiet",
+      `--setenv=ACTION=${action}`,
       path.join(os.homedir(), ".hermes/scripts/meai-web-update.sh"),
     ], { timeout: 15000 });
-    return NextResponse.json({ started: true, state: "queued" });
+    return NextResponse.json({ started: true, state: "queued", action });
   } catch (e) {
     const msg = String(e?.message || e).slice(0, 200);
     try {

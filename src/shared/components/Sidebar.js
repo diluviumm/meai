@@ -15,6 +15,7 @@ const navItems = [
   { href: "/dashboard/overview", label: "Overview", icon: "space_dashboard" },
   { href: "/dashboard/endpoint", label: "Endpoint & Key", icon: "api" },
   { href: "/dashboard/providers", label: "Providers", icon: "dns" },
+  { href: "/dashboard/combos", label: "Combo & Vision Adapter", icon: "layers" },
   // { href: "/dashboard/basic-chat", label: "Basic Chat", icon: "chat" }, // Hidden
   { href: "/dashboard/usage", label: "Usage", icon: "bar_chart" },
   { href: "/dashboard/quota", label: "Quota Tracker", icon: "data_usage" },
@@ -96,14 +97,15 @@ export default function Sidebar({ onClose }) {
     return pathname.startsWith(href);
   };
 
-  // Jalankan update fork dari web: POST -> systemd-run terpisah (aman dari restart app)
-  const handleForkApply = async () => {
+  // Jalankan update fork dari web: POST -> systemd-run terpisah (aman dari restart app).
+  // action: "apply" (cherry-pick aman + build bila ada perubahan) | "rebuild" (build + restart).
+  const handleForkApply = async (action = "apply") => {
     setForkApplying(true);
     try {
       const r = await fetch("/api/upstream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "apply" }),
+        body: JSON.stringify({ action }),
       });
       const d = await r.json();
       if (!r.ok) {
@@ -156,6 +158,11 @@ export default function Sidebar({ onClose }) {
           {!forkBusy && forkCheck && forkCheck.error && (
             <button onClick={() => setShowForkModal(true)} className="w-full cursor-pointer rounded-lg border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-left text-[11px] text-danger transition hover:bg-danger/15">
               Cek update gagal — klik utk detail
+            </button>
+          )}
+          {!forkBusy && typeof forkState === "string" && /^failed/.test(forkState) && (
+            <button onClick={() => setShowForkModal(true)} title={forkState} className="w-full cursor-pointer rounded-lg border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-left text-[11px] text-danger transition hover:bg-danger/15">
+              Update terakhir GAGAL — klik utk detail
             </button>
           )}
           {!forkBusy && forkCheck && forkCheck.behind > 0 && (
@@ -215,12 +222,20 @@ export default function Sidebar({ onClose }) {
             <Button variant="ghost" onClick={() => setShowForkModal(false)} disabled={forkBusy}>
               {forkBusy ? "Proses berjalan di latar belakang" : "Tutup"}
             </Button>
+            <Button
+              variant="secondary"
+              onClick={() => handleForkApply("rebuild")}
+              disabled={forkBusy || forkApplying}
+              title="Build ulang + restart service tanpa mengubah kode (pemulihan cepat)"
+            >
+              Rebuild & Restart
+            </Button>
             {typeof forkState === "string" && /^done/.test(forkState) ? (
               <Button variant="primary" onClick={() => globalThis.location.reload()}>Muat ulang</Button>
             ) : (
               <Button
                 variant="primary"
-                onClick={handleForkApply}
+                onClick={() => handleForkApply("apply")}
                 loading={forkApplying || forkBusy}
                 disabled={forkBusy || !forkCheck || forkCheck.behind === null || forkCheck.behind === 0}
               >
@@ -239,6 +254,11 @@ export default function Sidebar({ onClose }) {
                 <span className="relative inline-flex size-2 rounded-full bg-primary" />
               </span>
               <span className="min-w-0 flex-1 truncate">{forkState}</span>
+            </div>
+          )}
+          {!forkBusy && typeof forkState === "string" && forkState.length > 0 && (
+            <div className={`rounded-lg border px-3 py-2 text-xs ${/^failed/.test(forkState) ? "border-danger/30 bg-danger/10 text-danger" : "border-success/30 bg-success/10 text-success"}`}>
+              Status terakhir: {forkState}
             </div>
           )}
           {forkCheck && forkCheck.behind > 0 && (
