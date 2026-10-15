@@ -36,9 +36,11 @@ const nextConfig = {
   experimental: {
     // #1529/#1572: LLM clients can send long context or base64 image payloads through /v1 rewrites.
     proxyClientMaxBodySize,
-    // Fork (ronde-49): dilu = 8GB & dibagi 18 container — batasi page-data workers
-    // build supaya tidak mati senyap karena tekanan memori (7 -> 4).
-    cpus: 4,
+    // Fork (ronde-49/50): dilu = 8GB & dibagi 18 container — batasi page-data workers
+    // build supaya tidak mati senyap karena tekanan memori (7 -> 4 -> 2).
+    // Ronde-50: earlyoom TERM 6x beruntun di cpus:4 (build ~2.4GB peak saat
+    // "Generating static pages") — turun ke 2 workers menurunkan peak ~1GB.
+    cpus: 2,
     // Cache fetch responses across HMR refreshes for faster dev reloads.
     serverComponentsHmrCache: true,
     // Tree-shake heavy barrel imports to cut compile + bundle size
