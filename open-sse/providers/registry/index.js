@@ -380,6 +380,7 @@ import p376 from "./v1m.js";
 import p377 from "./muse.js";
 import p378 from "./minimax-code.js";
 import p379 from "./minimax-code-global.js";
+import p380 from "./nous.js";
 export default [
   p0,
   p1,
@@ -761,4 +762,5 @@ export default [
   p377,
   p378,
   p379,
+  p380,
 ];
