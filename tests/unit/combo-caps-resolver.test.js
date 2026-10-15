@@ -17,8 +17,9 @@ describe("aggregateComboCapabilities: resolveCaps override", () => {
 
   it("falls back to the pattern default without a resolver", () => {
     const caps = aggregateComboCapabilities(models);
-    // glm-5.3 has no exact entry, so the *glm-5.3* pattern gives 200k and caps the combo.
-    expect(caps.contextWindow).toBe(200_000);
+    // glm-5.3 has no exact entry; the *glm-5.3* pattern owns 1M since #4544,
+    // and deepseek-v4.1-flash is 1M too — so the combo's min stays 1M.
+    expect(caps.contextWindow).toBe(1_000_000);
   });
 
   it("uses the fed limits when a resolver supplies them", () => {

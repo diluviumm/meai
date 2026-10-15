@@ -32,6 +32,7 @@ function sanitize(headers) {
           .replace(/sk-test-APIKEY|tok-test-ACCESS/g, "<CRED>")
           .replace(/kimi-\d{10,}/g, "kimi-<TS>")
           .replace(/^v\d+\.\d+\.\d+$/, "v<NODE>")  // versi node dinamis (CI vs lokal)
+          .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i, "<UUID>")  // X-Mavis-Session-Id dll acak
       : v;
   }
   return out;
