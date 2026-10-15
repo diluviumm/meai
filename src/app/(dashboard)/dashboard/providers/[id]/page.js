@@ -89,6 +89,8 @@ export default function ProviderDetailPage() {
   const providerId = params.id;
   const { getCaps } = useModelCaps();
   const [connections, setConnections] = useState([]);
+  // 15 Okt 2026 (order Mael): pencarian model di Available Models.
+  const [modelSearch, setModelSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [providerNode, setProviderNode] = useState(null);
   const [proxyPools, setProxyPools] = useState([]);
@@ -1229,8 +1231,11 @@ export default function ProviderDetailPage() {
       ...kiloFreeModels.filter((fm) => !models.some((m) => m.id === fm.id)),
     ].filter((m) => { const k = getModelKind(m); return !k || k === "llm"; });
     const disabledSet = new Set(disabledModelIds);
-    const displayModels = allModels.filter((m) => !disabledSet.has(m.id));
-    const disabledDisplayModels = allModels.filter((m) => disabledSet.has(m.id));
+    // 15 Okt 2026: filter ketikan (case-insensitive).
+    const _q = modelSearch.trim().toLowerCase();
+    const _hit = (m) => !_q || String(m.id || "").toLowerCase().includes(_q);
+    const displayModels = allModels.filter((m) => !disabledSet.has(m.id) && _hit(m));
+    const disabledDisplayModels = allModels.filter((m) => disabledSet.has(m.id) && _hit(m));
     const customModelRows = getProviderCustomModelRows({
       customModels,
       modelAliases,
@@ -1844,6 +1849,14 @@ export default function ProviderDetailPage() {
             <h2 className="text-lg font-semibold">
               {"Available Models"}
             </h2>
+            <input
+              type="search"
+              value={modelSearch}
+              onChange={(e) => setModelSearch(e.target.value)}
+              placeholder="Search models..."
+              aria-label="Search models"
+              className="w-full max-w-[200px] rounded-md border border-border bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none"
+            />
             {providerThinkingLevels && (
               <div className="flex min-w-0 flex-col gap-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">

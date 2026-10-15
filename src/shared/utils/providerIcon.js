@@ -2,6 +2,9 @@
 // Alias related brands; session-cache 404s so one miss never spams again.
 
 const ICON_ALIASES = {
+  "openai-compatible-chat-4b1a1845-3352-4cf7-8441-ab115e211b3f": "kenari",
+  "knr": "kenari",
+
   "perplexity-agent": "perplexity",
   "gitlab-duo": "gitlab",
   "vercel-ai-gateway": "vercel",
