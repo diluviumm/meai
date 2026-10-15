@@ -16,9 +16,13 @@ const MAX_SESSION_LENGTH = 256;
 
 const RESPONSES_BASE_URL = "https://opencode.ai/zen/v1/responses";
 const MAX_TOOL_NAME_LEN = 128;
-// OpenCode v2 UA shape: opencode/<channel>/<version>/<client>. Upstream rejects
-// the v1 "opencode/1.18.x" form with 403 FreeTierError on free-tier models even
-// when authenticated with a Zen API key on /zen/v1/*.
+// Fork (ronde-51): free-tier ids (…-free) ride the KEYLESS /inference/v1 gate —
+// the same one the `oc/*` lane uses. Keyed /zen/v1 access to a free id answers
+// per-account "Model access is disabled" (console switches) for some models
+// (live: deepseek-v4.1-flash-free 403 on both keys while mimo/muse passed),
+// while the keyless gate only checks the v2 client fingerprint this executor
+// sends. Paid ids keep the keyed /zen/v1 transports untouched.
+const FREE_INFERENCE_BASE_URL = "https://opencode.ai/inference/v1";
 const OPENCODE_UA = "opencode/latest/2.0.26/cli";
 const OPENCODE_CLIENT = "cli";
 export const OPENCODE_SESSION_RE = /^ses_[0-9a-f]{12}[0-9A-Za-z]{14}$/;
@@ -114,6 +118,12 @@ function isResponsesModel(model) {
   return isMuseSparkModel(baseModelId(model));
 }
 
+// Fork (ronde-51): free-tier ids (…-free) ride the keyless inference gate (see
+// FREE_INFERENCE_BASE_URL) instead of the keyed /zen/v1 transports.
+function isFreeTierModel(model) {
+  return /-free$/.test(baseModelId(model));
+}
+
 // Flatten Chat Completions tool declarations into the Responses flat shape and
 // drop hosted/nameless tools the /responses endpoint rejects.
 function normalizeResponsesTools(body) {
@@ -183,6 +193,18 @@ export class OpenCodeZenExecutor extends DefaultExecutor {
   }
 
   buildUrl(model, stream, urlIndex = 0, credentials = null) {
+    const base = baseModelId(model);
+    if (isFreeTierModel(base)) {
+      // Keep the wire matching the resolved transport so no re-translation is
+      // needed: claude clients keep /messages, Responses clients /responses,
+      // everything else /chat/completions — all on the keyless gate.
+      const wire = isResponsesModel(base)
+        ? "openai-responses"
+        : (credentials?.runtimeTransport?.format || "openai");
+      if (wire === "claude") return `${FREE_INFERENCE_BASE_URL}/messages`;
+      if (wire === "openai-responses") return `${FREE_INFERENCE_BASE_URL}/responses`;
+      return `${FREE_INFERENCE_BASE_URL}/chat/completions`;
+    }
     // Muse Spark lives on /responses even when a stale runtimeTransport leaks in.
     if (isResponsesModel(model)) return RESPONSES_BASE_URL;
     return super.buildUrl(model, stream, urlIndex, credentials);
@@ -225,6 +247,12 @@ export class OpenCodeZenExecutor extends DefaultExecutor {
     headers["x-opencode-session-id"] = session;
     headers["x-session-affinity"] = session;
     headers["x-session-id"] = session;
+    // Keyless gate: never leak the connection key to /inference/v1; the free
+    // tier authenticates with the public literal, exactly like `oc/*`.
+    if (typeof url === "string" && url.startsWith(FREE_INFERENCE_BASE_URL)) {
+      headers["Authorization"] = "Bearer public";
+      delete headers["x-api-key"];
+    }
     return headers;
   }
 

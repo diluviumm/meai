@@ -365,3 +365,44 @@ describe("OpenCode Zen (opencode-zen) v2 Free-Tier Fingerprint", () => {
   });
 });
 
+describe("OpenCode Zen free-tier keyless inference routing (fork ronde-51)", () => {
+  it("routes -free ids to /inference/v1 (per wire format) and keeps paid ids on /zen/v1", () => {
+    const executor = getExecutor("opencode-zen");
+    expect(executor.buildUrl("mimo-v2.6-flash-free", true, 0, { runtimeTransport: { format: "openai" } }))
+      .toBe("https://opencode.ai/inference/v1/chat/completions");
+    expect(executor.buildUrl("deepseek-v4.1-flash-free", true, 0, { runtimeTransport: { format: "openai" } }))
+      .toBe("https://opencode.ai/inference/v1/chat/completions");
+    expect(executor.buildUrl("muse-spark-1.3-contributor-free", true, 0, { runtimeTransport: { format: "openai-responses" } }))
+      .toBe("https://opencode.ai/inference/v1/responses");
+    expect(executor.buildUrl("mimo-v2.6-flash-free", true, 0, { runtimeTransport: { format: "claude" } }))
+      .toBe("https://opencode.ai/inference/v1/messages");
+    // Paid ids keep the keyed /zen/v1 transport resolved by chatCore.
+    expect(executor.buildUrl("deepseek-v4.1-flash", true, 0, { runtimeTransport: { format: "openai", baseUrl: "https://opencode.ai/zen/v1/chat/completions" } }))
+      .toBe("https://opencode.ai/zen/v1/chat/completions");
+  });
+
+  it("overrides auth to the public literal only on the keyless gate", () => {
+    const executor = getExecutor("opencode-zen");
+    const free = executor.buildHeaders(
+      { apiKey: "sk-test", rawHeaders: {} },
+      true,
+      "https://opencode.ai/inference/v1/chat/completions",
+    );
+    expect(free["Authorization"]).toBe("Bearer public");
+    const paid = executor.buildHeaders(
+      {
+        apiKey: "sk-test",
+        rawHeaders: {},
+        runtimeTransport: {
+          format: "openai",
+          baseUrl: "https://opencode.ai/zen/v1/chat/completions",
+          auth: { combined: true, header: "Authorization", scheme: "bearer" },
+        },
+      },
+      true,
+      "https://opencode.ai/zen/v1/chat/completions",
+    );
+    expect(paid["Authorization"]).toBe("Bearer sk-test");
+  });
+});
+
