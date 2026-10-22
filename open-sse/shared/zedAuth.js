@@ -162,9 +162,11 @@ export function decryptZedAccessToken(encryptedAccessToken, privateKeyVerifier) 
         .toString("utf8");
       // PKCS#1 v1.5 unpadding is not integrity-checked: a wrong-key decrypt
       // can "succeed" with garbage bytes instead of throwing. Replacement
-      // characters prove the output is not the real UTF-8 token — fail loudly
-      // rather than storing garbage as a credential.
-      if (text.includes("�")) fail(oaepError);
+      // characters prove the output is not the real UTF-8 token — and random
+      // garbage also contains control bytes, so require printable ASCII.
+      // Without this, a ciphertext from a superseded keypair could be stored
+      // as a credential instead of erroring the session.
+      if (text.length < 8 || text.includes("�") || !/^[\x20-\x7E]+$/.test(text)) fail(oaepError);
       return text;
     } catch (err) {
       if (err.message.startsWith("Failed to decrypt Zed access token")) throw err;
