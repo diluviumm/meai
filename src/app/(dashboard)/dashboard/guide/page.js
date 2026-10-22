@@ -143,6 +143,7 @@ const FEATURES = [
       "Klik Refresh untuk memaksa ambil data terbaru (cache normal 5 detik).",
       "Untuk CodeBuddy: paket Monthly = allowance berulang; Bonus Pack = kredit sekali pakai yang ditandai expired saat habis.",
       "Semua paket ditampilkan (aktif lebih dulu, expired diberi badge); tombol hide expired hanya menyembunyikan riwayat, bukan menghapus data.",
+      "Jika ada baris yang pernah disembunyikan, bagian Hidden punya tombol Show all (N) untuk menampilkan semuanya sekaligus.",
       "Panel Check-in menunjukkan streak, kredit hari ini, dan status klaim — read-only untuk koneksi API key.",
     ],
     tip: "Bonus pack tidak bertambah otomatis hanya karena halaman dibuka. Paket baru datang dari kampanye provider atau check-in; klaim check-in dibatasi gateway untuk API key (403).",

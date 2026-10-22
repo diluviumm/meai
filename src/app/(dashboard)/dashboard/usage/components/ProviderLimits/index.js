@@ -731,6 +731,23 @@ export default function ProviderLimits() {
     updateQuotaVisibility(next, previous);
   }, [quotaVisibility, updateQuotaVisibility]);
 
+  const handleShowAllQuotas = useCallback((provider, rows) => {
+    if (!provider || !Array.isArray(rows) || rows.length === 0) return;
+
+    const previous = quotaVisibility;
+    const providerVisibility = previous[provider] || {};
+    const keys = new Set(rows.map(getQuotaVisibilityKey).filter(Boolean));
+    const hidden = (providerVisibility.hidden || []).filter((key) => !keys.has(key));
+    const next = {
+      ...previous,
+      [provider]: {
+        ...providerVisibility,
+        hidden,
+      },
+    };
+    updateQuotaVisibility(next, previous);
+  }, [quotaVisibility, updateQuotaVisibility]);
+
   const handleShowQuota = useCallback((provider, quota) => {
     const key = getQuotaVisibilityKey(quota);
     if (!provider || !key) return;
@@ -1606,6 +1623,14 @@ export default function ProviderLimits() {
                           {quotaRow.name}
                         </button>
                       ))}
+                      <button
+                        type="button"
+                        onClick={() => handleShowAllQuotas(conn.provider, hiddenQuotaRows)}
+                        className="shrink-0 rounded-md border border-brand-500/30 bg-brand-500/10 px-1.5 py-0.5 font-semibold text-brand-700 transition-colors hover:bg-brand-500/20 dark:text-brand-300"
+                        title="Show every hidden row for this provider"
+                      >
+                        Show all ({hiddenQuotaRows.length})
+                      </button>
                     </div>
                   </div>
                 )}
