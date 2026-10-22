@@ -93,6 +93,7 @@ function TrendSparkline({ samples, tone = "text-text-muted" }) {
       className={`h-2.5 min-w-[32px] flex-1 ${tone}`}
       aria-hidden="true"
     >
+      <polygon points={`0,18 ${points} 100,18`} fill="currentColor" opacity="0.10" />
       <polyline
         points={points}
         fill="none"
