@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { Card, Button, Input, Modal, CardSkeleton, Toggle, ConfirmModal } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
@@ -9,10 +9,7 @@ import {
   TUNNEL_PING_INTERVAL_MS,
   TUNNEL_PING_MAX_MS,
   STATUS_POLL_FAST_MS,
-  REACHABLE_MISS_THRESHOLD,
-  CLIENT_PING_FAST_MS,
 } from "./endpointConstants";
-import { clientPingUrl } from "./endpointPing";
 import useSettingsStore from "@/store/settingsStore";
 import EndpointRow from "./components/EndpointRow";
 import StatusAlert from "./components/StatusAlert";
@@ -87,7 +84,6 @@ export default function APIPageClient({ machineId }) {
   const [tunnelReachable, setTunnelReachable] = useState(false);
   const [tunnelUrl, setTunnelUrl] = useState("");
   const [tunnelPublicUrl, setTunnelPublicUrl] = useState("");
-  const [tunnelRunning, setTunnelRunning] = useState(false);
   const [tunnelLoading, setTunnelLoading] = useState(false);
   const [tunnelProgress, setTunnelProgress] = useState("");
   const [tunnelStatus, setTunnelStatus] = useState(null);
@@ -112,17 +108,8 @@ export default function APIPageClient({ machineId }) {
   const [showDisableTsModal, setShowDisableTsModal] = useState(false);
   const tsLogRef = useRef(null);
 
-  // Debounce reachable=false: server may briefly return false during background refresh.
-  // Only flip UI to "reconnecting" after N consecutive misses to avoid spinner flicker.
-  const tunnelMissRef = useRef(0);
-  const tsMissRef = useRef(0);
-  // Browser-side reachable cache (independent of backend DNS quirks)
-  const tunnelClientReachableRef = useRef(false);
-  const tsClientReachableRef = useRef(false);
   // Track whether reachable=true was ever observed in this session.
   // Distinguishes "Checking..." (initial cold cache) from "Reconnecting..." (lost connection).
-  const tunnelEverReachableRef = useRef(false);
-  const tsEverReachableRef = useRef(false);
   const [tunnelEverReachable, setTunnelEverReachable] = useState(false);
   const [tsEverReachable, setTsEverReachable] = useState(false);
 
@@ -172,59 +159,12 @@ export default function APIPageClient({ machineId }) {
     };
   }, [tunnelEnabled, tsEnabled, tunnelReachable, tsReachable]);
 
-  // Browser-side periodic ping: probes tunnel/tailscale URLs directly so UI stays
-  // "reachable" even when backend DNS (1.1.1.1) hiccups on *.ts.net or *.trycloudflare.com.
-  // Adaptive: slow when healthy, fast when degraded; pause when tab hidden.
-  useEffect(() => {
-    const probeBoth = async () => {
-      if (document.hidden) return;
-      if (tunnelRunning && (tunnelUrl || tunnelPublicUrl)) {
-        // Prefer the stable abc-tunnel shortlink. The direct trycloudflare
-        // hostname can expire while the worker route stays healthy; pinging
-        // both logged noisy ERR_NAME_NOT_RESOLVED errors on every page load.
-        let ok = tunnelPublicUrl ? await clientPingUrl(tunnelPublicUrl) : false;
-        if (!ok && tunnelUrl) ok = await clientPingUrl(tunnelUrl);
-        tunnelClientReachableRef.current = ok;
-        if (ok) { tunnelMissRef.current = 0; setTunnelReachable(true); if (!tunnelEverReachableRef.current) { tunnelEverReachableRef.current = true; setTunnelEverReachable(true); } }
-        else { tunnelMissRef.current += 1; if (tunnelMissRef.current >= REACHABLE_MISS_THRESHOLD) setTunnelReachable(false); }
-      } else {
-        tunnelClientReachableRef.current = false;
-      }
-      if (tsEnabled && tsUrl) {
-        const ok = await clientPingUrl(tsUrl);
-        tsClientReachableRef.current = ok;
-        if (ok) { tsMissRef.current = 0; setTsReachable(true); if (!tsEverReachableRef.current) { tsEverReachableRef.current = true; setTsEverReachable(true); } }
-        else { tsMissRef.current += 1; if (tsMissRef.current >= REACHABLE_MISS_THRESHOLD) setTsReachable(false); }
-      } else {
-        tsClientReachableRef.current = false;
-      }
-    };
-    const anyEnabled = (tunnelRunning && (tunnelUrl || tunnelPublicUrl)) || (tsEnabled && tsUrl);
-    if (!anyEnabled) return;
-    probeBoth();
-    const tunnelHealthy = !tunnelEnabled || tunnelReachable;
-    const tsHealthy = !tsEnabled || tsReachable;
-    if (tunnelHealthy && tsHealthy) return;
-    const id = setInterval(probeBoth, CLIENT_PING_FAST_MS);
-    return () => clearInterval(id);
-  }, [tunnelEnabled, tunnelRunning, tunnelUrl, tunnelPublicUrl, tsEnabled, tsUrl, tunnelReachable, tsReachable]);
+  // Reachability is derived from the gateway's own tunnel status poll
+  // (syncTunnelStatus below). We deliberately do NOT fetch the public
+  // trycloudflare/abc-tunnel URL from the browser: expired quick-tunnel
+  // hostnames produced ERR_NAME_NOT_RESOLVED / 530 noise on every page load.
 
-  // Client-side reachable only (server no longer probes; watchdog handles backend health).
-  // Miss-debounce: only flip to false after N consecutive misses.
-  const updateReachable = useCallback((_unused, clientRef, missRef, setter, everRef, everSetter) => {
-    const reachable = clientRef.current;
-    if (reachable) {
-      missRef.current = 0;
-      setter(true);
-      if (!everRef.current) {
-        everRef.current = true;
-        everSetter(true);
-      }
-    } else {
-      missRef.current += 1;
-      if (missRef.current >= REACHABLE_MISS_THRESHOLD) setter(false);
-    }
-  }, []);
+  // Reachability is derived directly from gateway status (see syncTunnelStatus).
 
   // Trust user intent (settingsEnabled): UI stays "enabled" while watchdog restarts process
   const syncTunnelStatus = async () => {
@@ -234,17 +174,20 @@ export default function APIPageClient({ machineId }) {
       const data = await statusRes.json();
       const tEnabled = data.tunnel?.settingsEnabled ?? data.tunnel?.enabled ?? false;
       const tUrl = data.tunnel?.tunnelUrl || "";
+      const tRunning = data.tunnel?.running === true;
       setTunnelUrl(tUrl);
       setTunnelPublicUrl(data.tunnel?.publicUrl || "");
-      setTunnelRunning(data.tunnel?.running === true);
       setTunnelEnabled(tEnabled);
-      updateReachable(null, tunnelClientReachableRef, tunnelMissRef, setTunnelReachable, tunnelEverReachableRef, setTunnelEverReachable);
+      setTunnelReachable(tRunning);
+      if (tRunning) setTunnelEverReachable(true);
 
       const tsEn = data.tailscale?.settingsEnabled ?? data.tailscale?.enabled ?? false;
       const tsUrlVal = data.tailscale?.tunnelUrl || "";
+      const tsRunning = data.tailscale?.running === true;
       setTsUrl(tsUrlVal);
       setTsEnabled(tsEn);
-      updateReachable(null, tsClientReachableRef, tsMissRef, setTsReachable, tsEverReachableRef, setTsEverReachable);
+      setTsReachable(tsRunning);
+      if (tsRunning) setTsEverReachable(true);
     } catch { /* ignore poll errors */ }
   };
 
@@ -265,17 +208,20 @@ export default function APIPageClient({ machineId }) {
         const data = await statusRes.json();
         const tEnabled = data.tunnel?.settingsEnabled ?? data.tunnel?.enabled ?? false;
         const tUrl = data.tunnel?.tunnelUrl || "";
+        const tRunning = data.tunnel?.running === true;
         setTunnelUrl(tUrl);
         setTunnelPublicUrl(data.tunnel?.publicUrl || "");
-        setTunnelRunning(data.tunnel?.running === true);
         setTunnelEnabled(tEnabled);
-        updateReachable(null, tunnelClientReachableRef, tunnelMissRef, setTunnelReachable, tunnelEverReachableRef, setTunnelEverReachable);
+        setTunnelReachable(tRunning);
+        if (tRunning) setTunnelEverReachable(true);
 
         const tsEn = data.tailscale?.settingsEnabled ?? data.tailscale?.enabled ?? false;
         const tsUrlVal = data.tailscale?.tunnelUrl || "";
+        const tsRunning = data.tailscale?.running === true;
         setTsUrl(tsUrlVal);
         setTsEnabled(tsEn);
-        updateReachable(null, tsClientReachableRef, tsMissRef, setTsReachable, tsEverReachableRef, setTsEverReachable);
+        setTsReachable(tsRunning);
+        if (tsRunning) setTsEverReachable(true);
       }
     } catch (error) {
       console.log("Error loading settings:", error);
@@ -416,7 +362,6 @@ export default function APIPageClient({ machineId }) {
 
       setTunnelUrl(url);
       setTunnelPublicUrl(data.publicUrl || "");
-      setTunnelRunning(true);
       await pingTunnelHealth(data.publicUrl, url);
     } catch (error) {
       setTunnelStatus({ type: "error", message: error.message });
@@ -437,7 +382,6 @@ export default function APIPageClient({ machineId }) {
         setTunnelEnabled(false);
         setTunnelUrl("");
         setTunnelPublicUrl("");
-        setTunnelRunning(false);
         setShowDisableTunnelModal(false);
         setTunnelStatus({ type: "success", message: "Tunnel disabled" });
       } else {
