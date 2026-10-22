@@ -3648,6 +3648,25 @@ exports[`GOLDEN buildHeaders (default executor providers) > notion-web → heade
 }
 `;
 
+exports[`GOLDEN buildHeaders (default executor providers) > nous → headers (apiKey / oauth) 1`] = `
+{
+  "apiKey": {
+    "Accept": "text/event-stream",
+    "Authorization": "Bearer <TOK>",
+    "Content-Type": "application/json",
+  },
+  "nonStream": {
+    "Authorization": "Bearer <TOK>",
+    "Content-Type": "application/json",
+  },
+  "oauth": {
+    "Accept": "text/event-stream",
+    "Authorization": "Bearer <TOK>",
+    "Content-Type": "application/json",
+  },
+}
+`;
+
 exports[`GOLDEN buildHeaders (default executor providers) > nous-research → headers (apiKey / oauth) 1`] = `
 {
   "apiKey": {
@@ -6826,6 +6845,13 @@ exports[`GOLDEN buildUrl (default executor providers) > notion-web → url (stre
 {
   "nonStream": "https://app.notion.com/api/v3/runInferenceTranscript",
   "stream": "https://app.notion.com/api/v3/runInferenceTranscript",
+}
+`;
+
+exports[`GOLDEN buildUrl (default executor providers) > nous → url (stream + non-stream) 1`] = `
+{
+  "nonStream": "https://inference-api.nousresearch.com/v1/chat/completions",
+  "stream": "https://inference-api.nousresearch.com/v1/chat/completions",
 }
 `;
 

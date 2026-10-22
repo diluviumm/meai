@@ -201,6 +201,10 @@
       "checkInUrls": [
         "https://copilot.tencent.com/billing/meter/daily-checkin",
         "https://copilot.tencent.com/v2/billing/meter/daily-checkin"
+      ],
+      "checkInStatusUrls": [
+        "https://copilot.tencent.com/v2/billing/meter/checkin-activity-status",
+        "https://copilot.tencent.com/billing/meter/checkin-activity-status"
       ]
     },
     "format": "openai",
@@ -248,7 +252,12 @@
       "Content-Type": "application/connect+proto",
       "User-Agent": "connect-es/1.6.1"
     },
-    "clientVersion": "3.12.17"
+    "clientVersion": "3.12.17",
+    "usage": {
+      "url": "https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage",
+      "planInfoUrl": "https://api2.cursor.sh/aiserver.v1.DashboardService/GetPlanInfo",
+      "authUsageUrl": "https://api2.cursor.sh/auth/usage"
+    }
   },
   "deepgram": {
     "baseUrl": "https://api.deepgram.com/v1/listen",
@@ -841,6 +850,9 @@
     },
     "forceStream": true,
     "noAuth": true,
+    "reasoningInject": {
+      "scope": "all"
+    },
     "quirks": {
       "forceAutoToolChoiceModels": [
         "muse-spark-1.3-contributor-free"
@@ -1028,6 +1040,10 @@
       "checkInUrls": [
         "https://www.codebuddy.ai/v2/billing/meter/daily-checkin",
         "https://www.codebuddy.ai/billing/meter/daily-checkin"
+      ],
+      "checkInStatusUrls": [
+        "https://www.codebuddy.ai/v2/billing/meter/checkin-activity-status",
+        "https://www.codebuddy.ai/billing/meter/checkin-activity-status"
       ]
     },
     "format": "openai",
@@ -2216,5 +2232,16 @@
     },
     "clientId": "mcode-public",
     "tokenUrl": "https://account.minimax.io/oauth2/token"
+  },
+  "nous": {
+    "baseUrl": "https://inference-api.nousresearch.com/v1/chat/completions",
+    "format": "openai",
+    "auth": {
+      "combined": true,
+      "header": "Authorization",
+      "scheme": "bearer"
+    },
+    "clientId": "hermes-cli",
+    "tokenUrl": "https://portal.nousresearch.com/api/oauth/token"
   }
 }
