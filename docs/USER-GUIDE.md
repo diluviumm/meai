@@ -133,6 +133,13 @@ Payload Tencent berisi beberapa jenis paket:
   mendatang terlihat lebih dulu.
 - Baris `expired` diberi badge dan tidak dihitung dalam rata-rata sisa.
 
+**Bonus harian otomatis (OAuth):** CodeBuddy memberi 100 kredit/hari (1000 pada
+hari ke-7) lewat `POST /billing/meter/daily-checkin`. MeAI mengklaimnya otomatis
+maksimal sekali sehari per koneksi OAuth sebelum membaca quota, jadi paket baru
+langsung muncul. Koneksi **API key tidak bisa** check-in — gateway membalas
+`403 API key not allowed for this path or method`; itu sebabnya bonus harian
+tidak bertambah pada koneksi API key.
+
 **Perbaikan 22 Okt 2026:** paket subscription baru bisa tampil `500/500`
 padahal belum dipakai. Penyebabnya handler lama selalu membaca
 `CycleCapacityUsed` (yang berisi placeholder `500`) untuk paket refill.

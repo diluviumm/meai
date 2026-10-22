@@ -42,6 +42,12 @@ export default {
     // billing payload (data.Response.Data.Accounts[]). See services/usage/codebuddy-cn.js.
     usage: {
       url: "https://copilot.tencent.com/v2/billing/meter/get-user-resource",
+      // Daily bonus claim (100 credits/day, 1000 on day 7). OAuth only: the
+      // gateway rejects API keys for this path ("API key not allowed").
+      checkInUrls: [
+        "https://copilot.tencent.com/billing/meter/daily-checkin",
+        "https://copilot.tencent.com/v2/billing/meter/daily-checkin",
+      ],
     },
   },
   models: [

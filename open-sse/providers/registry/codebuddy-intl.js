@@ -52,6 +52,11 @@ export default {
     // Intl billing endpoint mirrors CN shape (data.Response.Data.Accounts[]).
     usage: {
       url: "https://www.codebuddy.ai/v2/billing/meter/get-user-resource",
+      // Daily bonus claim (OAuth only — API keys are rejected for this path).
+      checkInUrls: [
+        "https://www.codebuddy.ai/v2/billing/meter/daily-checkin",
+        "https://www.codebuddy.ai/billing/meter/daily-checkin",
+      ],
     },
   },
   // Same model lineup exposed by the CN gateway — intl backend is the same catalog.

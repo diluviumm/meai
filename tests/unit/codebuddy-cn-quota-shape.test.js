@@ -170,4 +170,23 @@ describe("CodeBuddy quota balance extraction", () => {
     const usage = await getCodeBuddyIntlUsage(null, "test-key", {}, null);
     expect(usage.quotas.Monthly).toMatchObject({ used: 0, total: 100, recurring: true });
   });
+
+  it("claims the daily bonus before reading usage for OAuth connections", async () => {
+    fetchMock
+      .mockResolvedValueOnce({ status: 200, ok: true, json: async () => ({ code: 0, msg: "OK" }) })
+      .mockResolvedValueOnce(
+        reply([pack({ SubProductCode: "sp_tcaca_codebuddy_ide", CapacitySizePrecise: "500", CapacityRemainPrecise: "500" })]),
+      );
+
+    await getCodeBuddyCnUsage("oauth-token-daily-claim", null, {}, null);
+    expect(fetchMock.mock.calls[0][0]).toContain("daily-checkin");
+    expect(fetchMock.mock.calls[1][0]).toContain("get-user-resource");
+  });
+
+  it("never calls the OAuth-only check-in for API-key connections", async () => {
+    fetchMock.mockResolvedValueOnce(reply([pack()]));
+    await getCodeBuddyCnUsage(null, "api-key-only-connection", {}, null);
+    expect(fetchMock.mock.calls.length).toBe(1);
+    expect(fetchMock.mock.calls[0][0]).toContain("get-user-resource");
+  });
 });

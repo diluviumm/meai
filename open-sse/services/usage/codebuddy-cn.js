@@ -119,6 +119,52 @@ function isExpiredPack(acc, resetAt, isBonus) {
   return false;
 }
 
+// ── Daily bonus claim (OAuth only) ─────────────────────────────────────────
+// CodeBuddy grants 100 credits/day via POST /billing/meter/daily-checkin
+// (1000 on day 7). The gateway rejects API keys on this path ("API key not
+// allowed for this path or method"), so only OAuth access tokens may claim.
+// One attempt per token per day per process: code 10001 = already claimed.
+const lastCheckInDay = new Map();
+
+function checkInDayKey(providerId, token) {
+  return `${providerId}:${String(token).slice(-12)}:${new Date().toISOString().slice(0, 10)}`;
+}
+
+async function maybeClaimDailyBonus(providerId, accessToken, proxyOptions) {
+  if (!accessToken) return;
+  const key = checkInDayKey(providerId, accessToken);
+  if (lastCheckInDay.has(key)) return;
+
+  const urls = U(providerId).checkInUrls || [];
+  for (const url of urls) {
+    try {
+      const response = await proxyAwareFetch(url, {
+        method: "POST",
+        headers: {
+          ...(PROVIDERS[providerId]?.headers || {}),
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: "{}",
+        signal: AbortSignal.timeout(12000),
+      }, proxyOptions);
+
+      // 404/405 = this deployment uses the other path variant.
+      if (response.status === 404 || response.status === 405) continue;
+
+      const json = await response.json().catch(() => null);
+      if ((response.ok || response.status === 400) && (json?.code === 0 || json?.code === 10001)) {
+        lastCheckInDay.set(key, true);
+      }
+      return;
+    } catch {
+      // Fail-open: a check-in failure must never block quota rendering.
+      return;
+    }
+  }
+}
+
 async function getCodeBuddyUsage(providerId, accessToken, apiKey, providerSpecificData, proxyOptions = null) {
   const token = accessToken || apiKey;
   if (!token) {
@@ -126,6 +172,10 @@ async function getCodeBuddyUsage(providerId, accessToken, apiKey, providerSpecif
   }
 
   try {
+    // Claim today's bonus before reading the balance so a fresh pack shows up
+    // in the same response. API-key connections skip this (gateway 403).
+    if (accessToken) await maybeClaimDailyBonus(providerId, accessToken, proxyOptions);
+
     const response = await proxyAwareFetch(U(providerId).url, {
       method: "POST",
       headers: {

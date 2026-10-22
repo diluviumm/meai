@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Card from "@/shared/components/Card";
 
@@ -323,7 +323,6 @@ function GuideCard({ feature, index }) {
 export default function GuidePage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
-  const searchRef = useRef(null);
 
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -376,7 +375,6 @@ export default function GuidePage() {
             search
           </span>
           <input
-            ref={searchRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {

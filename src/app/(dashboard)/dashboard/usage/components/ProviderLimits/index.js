@@ -1537,6 +1537,11 @@ export default function ProviderLimits() {
                     {quota.hint}
                   </p>
                 )}
+                {["codebuddy-cn", "codebuddy-intl"].includes(conn.provider) && conn.authType !== "oauth" && !error && !isLoading && (
+                  <p className="mt-2 rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-1.5 text-[10px] leading-relaxed text-sky-700 dark:text-sky-300">
+                    Koneksi ini memakai API key. Bonus harian CodeBuddy hanya bisa diklaim lewat koneksi OAuth (gateway menolak API key untuk check-in). Quota bulanan tetap terbaca.
+                  </p>
+                )}
                 {hiddenQuotaRows.length > 0 && (
                   <div className="mt-2 flex min-w-0 items-center gap-1 border-t border-black/5 pt-2 text-[10px] text-text-muted dark:border-white/5">
                     <span className="material-symbols-outlined shrink-0 text-[14px]">
