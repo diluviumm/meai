@@ -6,7 +6,13 @@
 import { proxyAwareFetch } from "../../utils/proxyFetch.js";
 import { parseResetTime, toFiniteNumber, U } from "./shared.js";
 
-const USAGE_URL = U("opencode-zen").url;
+const USAGE_URLS = [
+  U("opencode-zen").url,
+  // 2026-10-22: /zen/v1/usage started answering 404 while the keyed usage
+  // moved to the shared Go path — the same API key returns rolling/weekly/
+  // monthly there. Try the canonical URL first, then the Go path.
+  "https://opencode.ai/zen/go/v1/usage",
+].filter(Boolean);
 const QUOTA_NAMES = {
   rolling: "Rolling",
   weekly: "Weekly",
@@ -30,17 +36,22 @@ export async function getOpenCodeZenUsage(apiKey = null, proxyOptions = null) {
   }
 
   try {
-    const response = await proxyAwareFetch(
-      USAGE_URL,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${apiKey.trim()}`,
-          Accept: "application/json",
+    let response = null;
+    for (const url of USAGE_URLS) {
+      response = await proxyAwareFetch(
+        url,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${apiKey.trim()}`,
+            Accept: "application/json",
+          },
         },
-      },
-      proxyOptions,
-    );
+        proxyOptions,
+      );
+      // Only a 404 means "this path moved" — auth/entitlement answers are final.
+      if (response.status !== 404) break;
+    }
 
     if (response.status === 401) {
       return {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import QuotaTable from "./QuotaTable";
 import Toggle from "@/shared/components/Toggle";
@@ -836,7 +837,11 @@ export default function ProviderLimits() {
   const isConnectionDepleted = (conn) => {
     const quotas = quotaData[conn.id]?.quotas;
     if (!quotas?.length) return false;
-    return quotas.some((q) => {
+    // Expired one-shot packs (CodeBuddy Bonus Pack etc.) are history, not a
+    // live depletion signal — ignore them or a healthy account looks dead.
+    const active = quotas.filter((q) => q.expired !== true);
+    if (!active.length) return false;
+    return active.some((q) => {
       if (!q.total || q.total <= 0) return false;
       return calculatePercentage(q.used, q.total) <= DEPLETED_QUOTA_THRESHOLD;
     });
@@ -849,7 +854,9 @@ export default function ProviderLimits() {
     let depleted = 0;
     let tracked = 0;
     for (const conn of rows) {
-      const numericQ = (quotaData[conn.id]?.quotas || []).filter((q) => q && Number(q.total) > 0);
+      const numericQ = (quotaData[conn.id]?.quotas || []).filter(
+        (q) => q && Number(q.total) > 0 && q.expired !== true,
+      );
       if (!numericQ.length) continue;
       tracked += 1;
       const avg = numericQ.reduce((acc, q) => {
@@ -1219,6 +1226,26 @@ export default function ProviderLimits() {
           <span className="material-symbols-outlined text-[14px] text-primary">donut_small</span>
           {quotaSummary.tracked > 0 ? (
             <>
+              <svg className="size-5 -rotate-90" viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="3" className="text-black/10 dark:text-white/10" />
+                <circle
+                  cx="10"
+                  cy="10"
+                  r="8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(Math.max(0, Math.min(100, quotaSummary.avgRemaining)) / 100) * 50.27} 50.27`}
+                  className={
+                    quotaSummary.avgRemaining > 70
+                      ? "text-emerald-500 transition-all duration-500"
+                      : quotaSummary.avgRemaining >= 30
+                        ? "text-amber-500 transition-all duration-500"
+                        : "text-red-500 transition-all duration-500"
+                  }
+                />
+              </svg>
               <b className="text-text-primary">{quotaSummary.avgRemaining}%</b> avg remaining ({quotaSummary.tracked} tracked)
             </>
           ) : (
@@ -1231,6 +1258,13 @@ export default function ProviderLimits() {
             <b>{quotaSummary.depleted}</b> depleted
           </span>
         )}
+        <Link
+          href="/dashboard/guide#quota"
+          className="ml-auto inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15"
+        >
+          <span className="material-symbols-outlined text-[14px]">menu_book</span>
+          Cara baca quota
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 items-start md:grid-cols-2 gap-3">

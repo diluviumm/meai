@@ -27,4 +27,19 @@ describe("parseQuotaData codebuddy-cn recurring flag", () => {
     const out = parseQuotaData("codebuddy-cn", data);
     expect(out[0].recurring).toBe(true);
   });
+
+  it("forwards expired + a clamped remainingPercentage", () => {
+    const data = {
+      quotas: {
+        Monthly: { used: 0, total: 500, resetAt: "2026-10-31T00:00:00Z", recurring: true, expired: false },
+        "Bonus Pack 1": { used: 100, total: 100, resetAt: "2026-09-28T00:00:00Z", recurring: false, expired: true },
+      },
+    };
+    const out = parseQuotaData("codebuddy-cn", data);
+    const byName = Object.fromEntries(out.map((q) => [q.name, q]));
+    expect(byName.Monthly.remainingPercentage).toBe(100);
+    expect(byName.Monthly.expired).toBe(false);
+    expect(byName["Bonus Pack 1"].remainingPercentage).toBe(0);
+    expect(byName["Bonus Pack 1"].expired).toBe(true);
+  });
 });

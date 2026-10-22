@@ -656,7 +656,7 @@ button:disabled,
   transform: translateY(0);
 }
 @media (prefers-reduced-motion: reduce) {
-  .glass-card, .tilt-3d, .reveal-up { transition: none !important; transform: none !important; }
+  .glass-card, .tilt-3d, .reveal-up, .fade-in { transition: none !important; transform: none !important; animation: none !important; }
 }
 /* Mobile: matikan hover-lift & tilt (sentuh) — cegah sticky hover */
 @media (hover: none) {

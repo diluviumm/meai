@@ -637,15 +637,23 @@ export function parseQuotaData(provider, data) {
         // CodeBuddy CN/Intl mix recurring refill packs ("Monthly"/"Weekly"/...)
         // with one-shot bonus packs ("Bonus Pack N"). Forward `recurring`
         // so the UI can show "Expires in" for bonus packs (whose resetAt is
-        // a hard expiry, not a refresh) instead of "Reset in".
+        // a hard expiry, not a refresh) instead of "Reset in", and `expired`
+        // so dead packs can be collapsed instead of crowding live ones.
         if (data.quotas) {
           Object.entries(data.quotas).forEach(([name, quota]) => {
+            const total = quota.total || 0;
+            const used = quota.used || 0;
             normalizedQuotas.push({
               name,
-              used: quota.used || 0,
-              total: quota.total || 0,
+              used,
+              total,
               resetAt: quota.resetAt || null,
               recurring: quota.recurring !== false,
+              expired: quota.expired === true,
+              remainingPercentage:
+                total > 0
+                  ? Math.max(0, Math.min(100, ((total - used) / total) * 100))
+                  : 0,
             });
           });
         }

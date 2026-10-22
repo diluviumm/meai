@@ -108,6 +108,7 @@ export default function QuotaTable({
   onHideQuota = null,
 }) {
   const [page, setPage] = useState(1);
+  const [showExpired, setShowExpired] = useState(false);
 
   const normalizedQuotas = useMemo(
     () => quotas.map((quota, index) => ({
@@ -123,11 +124,28 @@ export default function QuotaTable({
     [normalizedQuotas, sortMode],
   );
 
-  const totalPages = Math.max(1, Math.ceil(sortedQuotas.length / PAGE_SIZE));
+  // Dead CodeBuddy bonus packs (and similar one-shot rows) are collapsed by
+  // default: a 16-pack response used to push the live Monthly row and the
+  // upcoming packs onto page 2, which read as "quota stopped updating".
+  const activeQuotas = useMemo(
+    () => sortedQuotas.filter((quota) => quota.expired !== true),
+    [sortedQuotas],
+  );
+  const expiredQuotas = useMemo(
+    () => sortedQuotas.filter((quota) => quota.expired === true),
+    [sortedQuotas],
+  );
+  const displayQuotas = useMemo(() => {
+    // A provider that only reports dead packs must still render something.
+    if (activeQuotas.length === 0) return sortedQuotas;
+    return showExpired ? [...activeQuotas, ...expiredQuotas] : activeQuotas;
+  }, [activeQuotas, expiredQuotas, sortedQuotas, showExpired]);
+
+  const totalPages = Math.max(1, Math.ceil(displayQuotas.length / PAGE_SIZE));
 
   useEffect(() => {
     setPage(1);
-  }, [sortMode, quotas]);
+  }, [sortMode, quotas, showExpired]);
 
   useEffect(() => {
     setPage((currentPage) => Math.min(currentPage, totalPages));
@@ -137,12 +155,12 @@ export default function QuotaTable({
     return null;
   }
 
-  const currentPageRows = sortedQuotas.slice(
+  const currentPageRows = displayQuotas.slice(
     (page - 1) * PAGE_SIZE,
     page * PAGE_SIZE,
   );
-  const pageStart = sortedQuotas.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const pageEnd = Math.min(page * PAGE_SIZE, sortedQuotas.length);
+  const pageStart = displayQuotas.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const pageEnd = Math.min(page * PAGE_SIZE, displayQuotas.length);
 
   const cellPad = compact ? "py-1 px-1.5" : "py-2 px-3";
   const nameText = compact ? "text-[11px]" : "text-sm";
@@ -153,9 +171,21 @@ export default function QuotaTable({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-[10px] text-text-muted">
-          {sortedQuotas.length} quota{sortedQuotas.length > 1 ? "s" : ""}
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-text-muted">
+          <span className="rounded-full bg-green-500/10 px-1.5 py-0.5 font-medium text-green-700 dark:text-green-400">
+            {activeQuotas.length || sortedQuotas.length} active
+          </span>
+          {expiredQuotas.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowExpired((value) => !value)}
+              className="rounded-full bg-black/5 px-1.5 py-0.5 font-medium text-text-muted transition-colors hover:bg-black/10 hover:text-text-primary dark:bg-white/10 dark:hover:bg-white/15"
+              aria-expanded={showExpired}
+            >
+              {showExpired ? "hide" : "show"} {expiredQuotas.length} expired
+            </button>
+          )}
         </div>
         {showSortLabel && (
           <div className="rounded-md border border-black/10 bg-black/[0.02] px-2 py-1 text-[10px] text-text-muted dark:border-white/10 dark:bg-white/[0.03]">
@@ -168,6 +198,7 @@ export default function QuotaTable({
         {currentPageRows.map((quota) => {
           const isUnlimited = quota.unlimited === true;
           const isCreditBalance = quota.isCreditBalance === true;
+          const isExpired = quota.expired === true;
           const colors = isCreditBalance
             ? { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500", bgLight: "bg-blue-500/10", emoji: "💰" }
             : getColorClasses(quota.remaining);
@@ -177,7 +208,11 @@ export default function QuotaTable({
           // refreshes at resetAt. Bonus/one-shot packs set recurring:false
           // and their resetAt is a hard expiry, so word it as "expires".
           const recurring = quota.recurring !== false;
-          const countdownLabel = recurring ? `in ${countdown}` : `expires in ${countdown}`;
+          const countdownLabel = isExpired
+            ? "expired"
+            : recurring
+              ? `in ${countdown}`
+              : `expires in ${countdown}`;
 
           // ── Ronde-35: di layar sempit (360–414px) baris satu-baris bikin
           // kolom progress bar mampet jadi 0px dan teks "expires in …"
@@ -186,7 +221,7 @@ export default function QuotaTable({
           return (
             <div
               key={`${quota.name}-${quota.index}`}
-              className={`flex flex-col gap-1.5 border-b border-black/5 dark:border-white/5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors sm:flex-row sm:items-center sm:gap-2 ${cellPad}`}
+              className={`flex flex-col gap-1.5 border-b border-black/5 dark:border-white/5 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors sm:flex-row sm:items-center sm:gap-2 ${cellPad} ${isExpired ? "opacity-55" : ""}`}
             >
               {/* Name */}
               <div className="flex min-w-0 items-center gap-1.5 sm:w-36 sm:flex-none">
@@ -194,6 +229,11 @@ export default function QuotaTable({
                 <span className={`${nameText} font-medium text-text-primary truncate`}>
                   {quota.name}
                 </span>
+                {isExpired && (
+                  <span className="shrink-0 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-text-muted dark:bg-white/10">
+                    expired
+                  </span>
+                )}
                 {hasHideAction && (
                   <HideQuotaButton
                     quota={quota}
@@ -242,7 +282,11 @@ export default function QuotaTable({
               {/* Reset time — lebar tetap supaya track bar konsisten antar baris
                   (di layar sempit lebar penuh, jadi "expires in …" tak terpotong) */}
               <div className="min-w-0 sm:w-32 sm:shrink-0">
-                {countdown !== "-" || resetDisplay ? (
+                {isExpired ? (
+                  <div className={`${resetPrimary} text-text-muted italic truncate`} title={resetDisplay || "Expired"}>
+                    expired{resetDisplay ? ` · ${resetDisplay}` : ""}
+                  </div>
+                ) : countdown !== "-" || resetDisplay ? (
                   compact ? (
                     <div
                       className={`${resetPrimary} text-text-primary font-medium truncate`}

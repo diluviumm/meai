@@ -128,14 +128,20 @@ export async function getXiaomiTokenplanUsage(apiKey = null, providerSpecificDat
       ]);
 
       if (usageRes.status === 401) {
-        return {
-          plan: "Token Plan",
-          message:
-            "Console session expired (cookies last ~24h). Re-copy the Cookie header from platform.xiaomimimo.com/#/console/balance and paste it into the connection's Console Cookie field.",
-        };
+        // Cookie expired (console sessions last ~24h). Do not blank the card:
+        // fall through to the always-available local counter with a hint.
+        return await selfTracked(
+          connectionId,
+          planTotal,
+          "Console session expired (cookies last ~24h) — showing local tracking. Re-copy the Cookie header from platform.xiaomimimo.com/#/console/balance to restore the live meter.",
+        );
       }
       if (!usageRes.ok) {
-        return { plan: "Token Plan", message: `Xiaomi console responded ${usageRes.status} — falling back to local tracking.` };
+        return await selfTracked(
+          connectionId,
+          planTotal,
+          `Xiaomi console responded ${usageRes.status} — showing local tracking instead.`,
+        );
       }
 
       const parsed = parseConsoleUsage(await usageRes.json().catch(() => null));

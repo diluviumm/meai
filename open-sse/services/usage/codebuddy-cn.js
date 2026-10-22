@@ -25,10 +25,21 @@ import { U, parseResetTime } from "./shared.js";
 
 const PROVIDER_ID = "codebuddy-cn";
 
-// Prefer the *Precise string fields (exact), fall back to the numeric ones.
-function num(precise, plain) {
-  const n = Number(precise ?? plain);
-  return Number.isFinite(n) ? n : 0;
+const REFILL_GAP_MS = 2 * 24 * 60 * 60 * 1000;
+
+/** Number coercion that treats "", null and undefined as "missing". */
+function toNumber(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function clamp(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
 }
 
 // Label a refill pack by its cycle length (Monthly is the common CodeBuddy case).
@@ -41,6 +52,71 @@ function refillCadence(acc) {
     if (days <= 10) return "Weekly";
   }
   return "Monthly";
+}
+
+/**
+ * Bonus vs refill. Prefer the product code (explicit and stable), fall back to
+ * the date-gap heuristic used by the original implementation.
+ */
+function isBonusPack(acc) {
+  const sub = String(acc.SubProductCode || "").toLowerCase();
+  if (sub.includes("bonus")) return true;
+  // sp_tcaca_codebuddy_ide / sp_tcaca_codebuddyide = base subscription.
+  if (sub.includes("codebuddy_ide") || sub.includes("codebuddyide")) return false;
+
+  const cycleEnd = parseResetTime(acc.CycleEndTime);
+  let deductionEnd = toNumber(acc.DeductionEndTime);
+  if (deductionEnd !== null && deductionEnd < 1e12) deductionEnd *= 1000;
+  if (!cycleEnd || deductionEnd === null) return false;
+  return deductionEnd - new Date(cycleEnd).getTime() <= REFILL_GAP_MS;
+}
+
+/**
+ * Read one coherent used/total pair.
+ *
+ * Multi-cycle refills use CycleCapacity*; base/bonus packs use Capacity*.
+ * When the chosen pair disagrees with its Remain field (used > total, or
+ * total - used != remain), trust `remain` and recompute used. That fixes the
+ * "fresh 500-credit plan shows 500 used" regression without hiding genuinely
+ * exhausted packs (used == total == size, remain == 0 stays coherent).
+ */
+function readBalance(acc, isBonus) {
+  const totalCycles = toNumber(acc.TotalCycles) || 0;
+  const remainCycles = toNumber(acc.RemainCycles) || 0;
+  const useCycle = !isBonus && (totalCycles > 1 || remainCycles > 0);
+
+  const used = useCycle
+    ? toNumber(acc.CycleCapacityUsedPrecise, acc.CycleCapacityUsed)
+    : toNumber(acc.CapacityUsedPrecise, acc.CapacityUsed);
+  const total = useCycle
+    ? toNumber(acc.CycleCapacitySizePrecise, acc.CycleCapacitySize)
+    : toNumber(acc.CapacitySizePrecise, acc.CapacitySize);
+  const remain = useCycle
+    ? toNumber(acc.CycleCapacityRemainPrecise, acc.CycleCapacityRemain)
+    : toNumber(acc.CapacityRemainPrecise, acc.CapacityRemain);
+
+  const totalOut = Math.max(0, total ?? 0);
+  let usedOut = Math.max(0, used ?? 0);
+
+  if (totalOut > 0 && remain !== null && remain >= 0 && remain <= totalOut) {
+    const coherentDelta = Math.abs(totalOut - usedOut - remain);
+    if (usedOut > totalOut || coherentDelta > 0.01) {
+      usedOut = totalOut - remain;
+    }
+  }
+  usedOut = clamp(usedOut, 0, totalOut > 0 ? totalOut : Number.MAX_SAFE_INTEGER);
+
+  return { used: usedOut, total: totalOut, remaining: totalOut > 0 ? Math.max(0, totalOut - usedOut) : 0 };
+}
+
+function isExpiredPack(acc, resetAt, isBonus) {
+  if (toNumber(acc.Status) === 3) return true;
+  const now = Date.now();
+  const hardExpiry = parseResetTime(acc.ExpiredTime);
+  if (hardExpiry && new Date(hardExpiry).getTime() <= now) return true;
+  // Bonus packs are one-shot: CycleEndTime is their hard expiry.
+  if (isBonus && resetAt && new Date(resetAt).getTime() <= now) return true;
+  return false;
 }
 
 async function getCodeBuddyUsage(providerId, accessToken, apiKey, providerSpecificData, proxyOptions = null) {
@@ -79,56 +155,59 @@ async function getCodeBuddyUsage(providerId, accessToken, apiKey, providerSpecif
       return { message: "CodeBuddy CN connected. No credit package found." };
     }
 
-    const cycleEndMs = (acc) => {
-      const r = parseResetTime(acc.CycleEndTime);
-      return r ? new Date(r).getTime() : Number.POSITIVE_INFINITY;
-    };
-    // Refill packs roll into a new cycle before the resource expires; bonus packs
-    // end exactly at expiry. >2d gap between cycle end and validity end = refill.
-    const REFILL_GAP_MS = 2 * 24 * 60 * 60 * 1000;
-    const isRefill = (acc) => {
-      const ce = cycleEndMs(acc);
-      const de = Number(acc.DeductionEndTime);
-      return Number.isFinite(ce) && Number.isFinite(de) && de - ce > REFILL_GAP_MS;
-    };
-    const byExpiry = (a, b) => cycleEndMs(a) - cycleEndMs(b);
+    const packs = accounts.map((acc) => {
+      const bonus = isBonusPack(acc);
+      const balance = readBalance(acc, bonus);
+      const resetAt = parseResetTime(acc.CycleEndTime);
+      return {
+        acc,
+        bonus,
+        ...balance,
+        resetAt,
+        resetMs: resetAt ? new Date(resetAt).getTime() : Number.POSITIVE_INFINITY,
+        expired: isExpiredPack(acc, resetAt, bonus),
+      };
+    });
 
-    const refills = accounts.filter(isRefill).sort(byExpiry);
-    const bonuses = accounts.filter((a) => !isRefill(a)).sort(byExpiry);
+    const byExpiry = (a, b) => a.resetMs - b.resetMs;
+    const refills = packs.filter((p) => !p.bonus).sort(byExpiry);
+    // Active bonus packs first (soonest expiry), dead packs at the tail.
+    const bonuses = packs
+      .filter((p) => p.bonus)
+      .sort((a, b) => Number(a.expired) - Number(b.expired) || byExpiry(a, b));
 
     const quotas = {};
-    // Refill packs first: cadence-labelled, using the *Cycle* balance and
-    // resetting at the next refresh.
+    // Refill packs first: cadence-labelled, resetting at the next refresh.
     const seenRefill = {};
-    refills.forEach((acc) => {
+    refills.forEach(({ acc, used, total, resetAt }) => {
       const base = refillCadence(acc);
       seenRefill[base] = (seenRefill[base] || 0) + 1;
       const name = seenRefill[base] > 1 ? `${base} ${seenRefill[base]}` : base;
       quotas[name] = {
-        used: num(acc.CycleCapacityUsedPrecise, acc.CycleCapacityUsed),
-        total: num(acc.CycleCapacitySizePrecise, acc.CycleCapacitySize),
-        resetAt: parseResetTime(acc.CycleEndTime),
+        used,
+        total,
+        resetAt,
         unlimited: false,
         // Recurring allowance: the CycleEndTime is the next refresh, not the
         // final expiry. The UI must show "Resets in", not "Expires in".
         recurring: true,
+        expired: false,
       };
     });
-    // Bonus packs: use the lifetime Capacity balance; resetAt is the expiry.
-    // These are one-shot credits (CycleEndTime == DeductionEndTime), so they
-    // never replenish — mark recurring:false so the UI shows "Expires in"
-    // instead of implying a monthly refill.
-    bonuses.forEach((acc, i) => {
+    // Bonus packs: one-shot credits, resetAt is a hard expiry. Keep the flag so
+    // the dashboard can collapse dead packs instead of crowding out live ones.
+    bonuses.forEach(({ used, total, resetAt, expired }, i) => {
       quotas[`Bonus Pack ${i + 1}`] = {
-        used: num(acc.CapacityUsedPrecise, acc.CapacityUsed),
-        total: num(acc.CapacitySizePrecise, acc.CapacitySize),
-        resetAt: parseResetTime(acc.CycleEndTime),
+        used,
+        total,
+        resetAt,
         unlimited: false,
         recurring: false,
+        expired,
       };
     });
 
-    const basePkg = refills[0] || accounts[0] || {};
+    const basePkg = refills[0]?.acc || accounts[0] || {};
     const plan = basePkg.PackageName || basePkg.SubProductName || "CodeBuddy";
 
     return { plan, quotas };
