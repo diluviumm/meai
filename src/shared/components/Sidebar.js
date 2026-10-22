@@ -259,7 +259,9 @@ export default function Sidebar({ onClose }) {
           )}
           {!forkBusy && typeof forkState === "string" && forkState.length > 0 && (
             <div className={`rounded-lg border px-3 py-2 text-xs ${/^failed/.test(forkState) ? "border-danger/30 bg-danger/10 text-danger" : "border-success/30 bg-success/10 text-success"}`}>
-              Status terakhir: {forkState}
+              {/^done/.test(forkState) && forkCheck?.behind === 0
+                ? "Rebuild/restart selesai — tidak ada patch upstream tertunda."
+                : `Status terakhir: ${forkState}`}
             </div>
           )}
           {!forkBusy && typeof forkState === "string" && /^done:.*applied=0/.test(forkState) && forkCheck?.behind > 0 && (
