@@ -108,7 +108,10 @@ export default function QuotaTable({
   onHideQuota = null,
 }) {
   const [page, setPage] = useState(1);
-  const [showExpired, setShowExpired] = useState(false);
+  // Show every pack by default (active first, expired marked). The previous
+  // default hid expired packs, which made a healthy account look like its
+  // bonus history had "disappeared"; users asked to keep the full ledger.
+  const [showExpired, setShowExpired] = useState(true);
 
   const normalizedQuotas = useMemo(
     () => quotas.map((quota, index) => ({

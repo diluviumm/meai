@@ -138,7 +138,7 @@ export function getConnectionsEmptyMessage(totals, providerFilter, accountFilter
       icon: "cloud_off",
       title: "No Providers Connected",
       description:
-        "Connect to providers with OAuth to track your API quota limits and usage.",
+        "Connect a provider with an API key or OAuth to track its quota and usage.",
     };
   }
   if (!totals.providerFilteredConnections) {

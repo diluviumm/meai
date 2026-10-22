@@ -48,6 +48,13 @@ export default {
         "https://copilot.tencent.com/billing/meter/daily-checkin",
         "https://copilot.tencent.com/v2/billing/meter/daily-checkin",
       ],
+      // Read-only check-in activity status. Unlike daily-checkin, this path
+      // accepts API keys on CN (verified 2026-10-22) and returns streak,
+      // today_checked_in, daily_credit and the activity end date.
+      checkInStatusUrls: [
+        "https://copilot.tencent.com/v2/billing/meter/checkin-activity-status",
+        "https://copilot.tencent.com/billing/meter/checkin-activity-status",
+      ],
     },
   },
   models: [

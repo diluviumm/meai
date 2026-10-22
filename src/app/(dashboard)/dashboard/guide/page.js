@@ -31,7 +31,7 @@ const FEATURES = [
     summary:
       "Dari nol sampai request pertama: sambungkan provider, buat API key MeAI, lalu arahkan client ke endpoint.",
     steps: [
-      "Buka Providers → pilih provider → Add Connection. Untuk provider OAuth, klik Connect with OAuth dan selesaikan login di browser.",
+      "Buka Providers → pilih provider → Add Connection. API key: tempel key provider, beri nama, lalu Test. OAuth hanya opsi tambahan bila provider memang membutuhkannya.",
       "Buka Endpoint & Key → buat API key MeAI. Key ini yang dipakai client (bukan key provider).",
       "Arahkan client ke Base URL MeAI + /v1, lalu panggil model dengan prefix provider, mis. cbcn/deepseek-v4.1-flash.",
     ],
@@ -142,9 +142,10 @@ const FEATURES = [
       "Buka Quota Tracker. Kartu per koneksi menampilkan bar sisa, used/total, dan waktu reset.",
       "Klik Refresh untuk memaksa ambil data terbaru (cache normal 5 detik).",
       "Untuk CodeBuddy: paket Monthly = allowance berulang; Bonus Pack = kredit sekali pakai yang ditandai expired saat habis.",
-      "Gunakan tombol show/hide expired untuk menyembunyikan paket lama.",
+      "Semua paket ditampilkan (aktif lebih dulu, expired diberi badge); tombol hide expired hanya menyembunyikan riwayat, bukan menghapus data.",
+      "Panel Check-in menunjukkan streak, kredit hari ini, dan status klaim — read-only untuk koneksi API key.",
     ],
-    tip: "Kalau provider membalas 505/error sementara, MeAI menampilkan data terakhir yang masih segar (stale) alih-alih mengosongkan kartu.",
+    tip: "Bonus pack tidak bertambah otomatis hanya karena halaman dibuka. Paket baru datang dari kampanye provider atau check-in; klaim check-in dibatasi gateway untuk API key (403).",
     href: "/dashboard/quota",
   },
   {
@@ -204,7 +205,7 @@ const FEATURES = [
       "Cari request yang gagal berdasarkan model atau status.",
       "Baca baris URL + body error untuk melihat respons upstream asli.",
     ],
-    tip: "Error 11128 CodeBuddy Intl berarti kredensial API key tidak punya izin chat — gunakan OAuth.",
+    tip: "Error 11128 = header official-client hilang/dibuang proxy; build ini sudah mengirim X-Conversation-*/X-API-Key. Error 11140 = akun dibatasi provider (unusual activity), bukan masalah OAuth.",
     href: "/dashboard/console-log",
   },
   {
@@ -230,11 +231,13 @@ const FEATURES = [
     summary:
       "Pola error yang paling sering muncul dan langkah perbaikannya.",
     steps: [
-      "400/11128 CodeBuddy Intl → API key tidak punya izin chat; reconnect lewat OAuth.",
+      "400/11128 CodeBuddy Intl → header official-client hilang atau dibuang proxy; pastikan request tidak dimodifikasi. Build ini sudah mengirim X-Conversation-*/X-API-Key.",
+      "403/11140 CodeBuddy Intl → akun dibatasi provider karena unusual activity; quota tetap terbaca, chat pulih setelah pembatasan berakhir atau lewat appeal di official client.",
       "404 No active credentials → prefix model salah atau provider belum punya koneksi aktif.",
       "429 → key/model kena limit; MeAI otomatis pindah key. Cek Quota Tracker untuk waktu reset.",
       "401 → token/key expired; reconnect atau update key.",
       "Quota tidak berubah → klik Refresh (force), cek Console Log untuk error upstream.",
+      "Bonus pack CodeBuddy berkurang → pack sekali pakai kedaluwarsa; cek panel Check-in untuk status hari ini (klaim API key ditolak gateway).",
     ],
     tip: "Untuk masalah yang menetap, buka Console Log dan salin requestId error saat melapor.",
     href: "/dashboard/console-log",
@@ -252,11 +255,15 @@ const FAQ = [
   },
   {
     q: "Kenapa Bonus Pack CodeBuddy berkurang?",
-    a: "Bonus pack adalah kredit sekali pakai. Yang sudah expired/habis tetap dikirim provider; MeAI sekarang menyembunyikannya di balik tombol 'show expired' agar paket aktif dan paket mendatang terlihat lebih dulu.",
+    a: "Bonus pack adalah kredit sekali pakai. Paket lama tetap dikirim provider sampai ExpiredTime, lalu ditandai expired. MeAI sekarang menampilkan semua paket (aktif lebih dulu) agar riwayat tidak terlihat hilang. Paket baru hanya muncul bila provider menambahkannya lewat kampanye atau check-in.",
+  },
+  {
+    q: "Bisakah check-in CodeBuddy dilakukan dengan API key?",
+    a: "Tidak. Endpoint /billing/meter/daily-checkin menolak API key dengan 403 'API key not allowed for this path or method'. Yang bisa dibaca dengan API key adalah status check-in (/checkin-activity-status), dan MeAI menampilkannya di kartu quota. Klaim hanya bisa lewat client resmi/OAuth; tidak ada header atau trik API key yang membuka endpoint ini.",
   },
   {
     q: "Apakah API key CodeBuddy Intl bisa dipakai untuk chat?",
-    a: "Tidak. Gateway chat www.codebuddy.ai memverifikasi channel client resmi dan menolak API key dengan 400/11128. API key tetap bisa membaca quota. Gunakan OAuth untuk chat.",
+    a: "Ya, API key tetap jalur utama. Gateway intl meminta header official-client X-Conversation-*/X-API-Key/X-User-Id; build ini sudah mengirimkannya. Jika muncul 11128, header dibuang proxy. Jika muncul 11140, akun sedang dibatasi provider karena unusual activity — bukan masalah OAuth; quota tetap terbaca dan chat pulih setelah pembatasan berakhir.",
   },
 ];
 

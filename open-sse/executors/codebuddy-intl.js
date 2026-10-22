@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { DefaultExecutor } from "./default.js";
 
 /**
@@ -39,22 +40,80 @@ export class CodeBuddyIntlExecutor extends DefaultExecutor {
 
     return transformed;
   }
+
+  buildHeaders(credentials, stream = true, url, model, body = null) {
+    const headers = super.buildHeaders(credentials, stream, url, model, body);
+
+    // Intl (www.codebuddy.ai) enforces a "conversation identity" gate on
+    // /v2/chat/completions since 2026-10-16: missing X-Conversation-* headers
+    // return 400/11128 "request illegal" before the body is even inspected.
+    // X-Conversation-ID must stay stable for a conversation (upstream uses it
+    // for prompt-prefix cache bucketing), so derive it from the first user
+    // message. The first message in the transformed body is the synthetic
+    // system prompt — using it would give every conversation the same id.
+    const messages = Array.isArray(body?.messages) ? body.messages : [];
+    const firstUser = messages.find((message) => message?.role === "user");
+    const firstContent =
+      typeof firstUser?.content === "string"
+        ? firstUser.content
+        : Array.isArray(firstUser?.content)
+          ? firstUser.content
+              .map((part) => (typeof part === "string" ? part : part?.text || ""))
+              .join("\n")
+          : "";
+    const seed = firstContent || JSON.stringify(body ?? {});
+    headers["X-Conversation-ID"] = crypto
+      .createHash("sha256")
+      .update(seed)
+      .digest("hex")
+      .slice(0, 32);
+    headers["X-Conversation-Message-ID"] = crypto.randomUUID().replace(/-/g, "");
+    headers["X-Conversation-Request-ID"] = crypto.randomUUID().replace(/-/g, "");
+    headers["X-Request-ID"] = crypto.randomUUID().replace(/-/g, "");
+
+    // API-key mode mirrors the official CLI: X-API-Key + an anonymous user id.
+    // OAuth credentials already carry a real X-User-Id downstream and must not
+    // be overwritten with "anonymous".
+    if (credentials?.apiKey && !credentials?.accessToken) {
+      headers["X-API-Key"] = credentials.apiKey;
+      headers["X-User-Id"] = headers["X-User-Id"] || "anonymous";
+      headers["X-Agent-Intent"] = "craft";
+      headers["X-Domain"] = "www.codebuddy.ai";
+    }
+
+    return headers;
+  }
+
   parseError(response, bodyText) {
     if (bodyText) {
       try {
         const data = JSON.parse(bodyText);
         const msg = data?.msg || data?.message || data?.error?.message || "";
         // 11128 on the intl gateway is a channel-verification rejection: the
-        // request looks like it did not come from an official client. For an
-        // API-key connection this is terminal (the key can read quota but not
-        // chat); OAuth is the credential the chat endpoint accepts.
+        // request looks like it did not come from an official client. The
+        // executor now sends the full official-client header family
+        // (X-Conversation-*, X-API-Key, X-User-Id); if it still appears, a
+        // proxy or caller is stripping those headers.
         if (data?.code === 11128) {
           return {
             status: 400,
             message:
               "CodeBuddy Intl menolak chat dengan 400/11128 (channel verification). " +
-              "API key ini valid untuk quota, tetapi tidak punya izin chat di www.codebuddy.ai. " +
-              "Hubungkan ulang provider ini lewat OAuth (Connect with OAuth), lalu gunakan koneksi OAuth tersebut.",
+              "Build ini sudah mengirim header official-client; jika masih muncul, periksa proxy yang " +
+              "membuang header X-Conversation-*/X-API-Key. API key tetap valid untuk membaca quota.",
+          };
+        }
+        // 11140 = account-level risk control ("unusual activity"). It is not a
+        // header problem and not an OAuth-vs-API-key problem: the key can still
+        // read quota, but chat is blocked until the provider lifts the review.
+        if (data?.code === 11140) {
+          return {
+            status: 403,
+            message:
+              "Akun CodeBuddy Intl sedang dibatasi provider (11140 unusual activity). " +
+              "Ini pembatasan akun, bukan masalah OAuth atau format API key. " +
+              "Quota tetap terbaca; chat pulih setelah pembatasan provider berakhir atau lewat appeal " +
+              "di official client. Gunakan provider CodeBuddy CN untuk model yang sama selama masa pembatasan.",
           };
         }
         if (data?.code === 6004 || /超出频率限制|frequency limit|限额/i.test(msg)) {

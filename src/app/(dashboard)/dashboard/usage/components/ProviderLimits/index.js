@@ -364,6 +364,7 @@ export default function ProviderLimits() {
         plan: data.plan || null,
         message: data.message || null,
         hint: data.hint || null, // token plan: panduan cara dapat kuota riil
+        checkIn: data.checkIn || null,
         raw: data,
       };
 
@@ -938,7 +939,7 @@ export default function ProviderLimits() {
             No Providers Connected
           </h3>
           <p className="mt-2 text-sm text-text-muted max-w-md mx-auto">
-            Connect to providers with OAuth to track your API quota limits and
+            Connect a provider with an API key or OAuth to track its quota and
             usage.
           </p>
         </div>
@@ -1284,7 +1285,7 @@ export default function ProviderLimits() {
           const rawQuotas = quota?.quotas || [];
           const visibleQuotas = filterQuotasByVisibility(conn.provider, rawQuotas, quotaVisibility);
           const hiddenQuotaRows = getHiddenQuotaRows(conn.provider, rawQuotas, quotaVisibility);
-          const numericQ = rawQuotas.filter((q) => q && Number(q.total) > 0);
+          const numericQ = rawQuotas.filter((q) => q && Number(q.total) > 0 && q.expired !== true);
           const avgRemaining = numericQ.length
             ? Math.round(
                 numericQ.reduce((acc, q) => {
@@ -1537,9 +1538,53 @@ export default function ProviderLimits() {
                     {quota.hint}
                   </p>
                 )}
-                {["codebuddy-cn", "codebuddy-intl"].includes(conn.provider) && conn.authType !== "oauth" && !error && !isLoading && (
+                {quota?.checkIn && !error && !isLoading && (
+                  <div className="mt-2 rounded-md border border-emerald-500/20 bg-emerald-500/[0.07] px-2 py-1.5 text-[10px] leading-relaxed text-emerald-800 dark:text-emerald-300">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate font-semibold">
+                        Check-in {quota.checkIn.activityName || "CodeBuddy"}
+                      </span>
+                      <span
+                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                          quota.checkIn.todayCheckedIn
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                            : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                        }`}
+                      >
+                        {quota.checkIn.todayCheckedIn
+                          ? "Selesai hari ini"
+                          : `Belum · +${quota.checkIn.dailyCredit || 0}`}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-text-muted">
+                      <span className="flex items-center gap-0.5" aria-label="7 hari terakhir">
+                        {(quota.checkIn.weekProgress?.length
+                          ? quota.checkIn.weekProgress
+                          : [false, false, false, false, false, false, false]
+                        ).map((done, i) => (
+                          <span
+                            key={i}
+                            className={`inline-block h-1.5 w-1.5 rounded-full ${
+                              done ? "bg-emerald-500" : "bg-black/15 dark:bg-white/20"
+                            }`}
+                          />
+                        ))}
+                      </span>
+                      <span>Streak {quota.checkIn.streakDays || 0} hari</span>
+                      <span>Total {quota.checkIn.totalCredits || 0} kredit</span>
+                    </div>
+                    {!quota.checkIn.todayCheckedIn && conn.authType !== "oauth" && (
+                      <p className="mt-1 text-text-muted">
+                        Status ini read-only untuk API key: gateway menolak klaim check-in dari API key (403).
+                        Quota bulanan dan chat tetap memakai API key; tidak perlu OAuth.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {["codebuddy-cn", "codebuddy-intl"].includes(conn.provider) && conn.authType !== "oauth" && !quota?.checkIn && !error && !isLoading && (
                   <p className="mt-2 rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-1.5 text-[10px] leading-relaxed text-sky-700 dark:text-sky-300">
-                    Koneksi ini memakai API key. Bonus harian CodeBuddy hanya bisa diklaim lewat koneksi OAuth (gateway menolak API key untuk check-in). Quota bulanan tetap terbaca.
+                    Koneksi ini memakai API key. Status check-in tidak tersedia dari endpoint provider ini;
+                    quota bulanan tetap terbaca dan chat tetap memakai API key.
                   </p>
                 )}
                 {hiddenQuotaRows.length > 0 && (

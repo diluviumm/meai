@@ -15,15 +15,13 @@ export default {
     notice: {
       signupUrl: "https://www.codebuddy.ai",
       apiKeyUrl: "https://www.codebuddy.ai",
-      text: "Chat CodeBuddy Intl hanya menerima kredensial OAuth dari client resmi. API key masih bisa membaca quota, tetapi gateway menolak chat dengan 400/11128 (channel verification). Gunakan tombol OAuth untuk koneksi chat.",
+      text: "API key adalah jalur utama di fork ini. Build ini mengirim header official-client (X-Conversation-*, X-API-Key, X-User-Id) yang diminta gateway. Jika muncul 11140, itu pembatasan akun dari provider (unusual activity), bukan masalah OAuth; quota tetap terbaca.",
     },
   },
-  category: "oauth",
-  // OAuth first: the intl chat gateway verifies the official-client channel and
-  // rejects API-key requests with 400/11128 ("request illegal") even when the
-  // key can read quota. Keep apikey for quota/usage, but steer new connections
-  // to OAuth which is the only credential the chat endpoint accepts.
-  authModes: ["oauth", "apikey"],
+  category: "apikey",
+  // API key first: the user runs this fork API-key-only. OAuth remains an
+  // optional credential for quota/check-in, not a requirement for chat.
+  authModes: ["apikey", "oauth"],
   hasOAuth: true,
   transport: {
     // Chat gateway is OpenAI-compatible SSE (same /v2/chat/completions path as CN).
@@ -56,6 +54,12 @@ export default {
       checkInUrls: [
         "https://www.codebuddy.ai/v2/billing/meter/daily-checkin",
         "https://www.codebuddy.ai/billing/meter/daily-checkin",
+      ],
+      // Read-only status; accepts API keys on the CN gateway and is expected
+      // to do the same on intl. Failure is non-fatal (usage still renders).
+      checkInStatusUrls: [
+        "https://www.codebuddy.ai/v2/billing/meter/checkin-activity-status",
+        "https://www.codebuddy.ai/billing/meter/checkin-activity-status",
       ],
     },
   },

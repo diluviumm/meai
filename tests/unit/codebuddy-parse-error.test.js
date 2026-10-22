@@ -46,7 +46,8 @@ describe("CodeBuddy parseError", () => {
     const parsed = executor.parseError({ status: 400 }, bodyText);
     expect(parsed.status).toBe(400);
     expect(parsed.message).toContain("11128");
-    expect(parsed.message).toMatch(/OAuth/i);
+    expect(parsed.message).toContain("X-Conversation");
+    expect(parsed.message.toLowerCase()).not.toContain("connect with oauth");
     expect(parsed.message).not.toContain('"displayTips"');
   });
 

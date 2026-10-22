@@ -128,17 +128,20 @@ Payload Tencent berisi beberapa jenis paket:
 | `Monthly` / `Weekly` / `Daily` | Allowance berulang (subscription) | `Capacity*` (atau `Cycle*` hanya untuk paket multi-cycle) |
 | `Bonus Pack N` | Kredit sekali pakai | `Capacity*`, expiry = `CycleEndTime` |
 
-- Paket bonus yang sudah expired **tetap dikirim provider**. Dashboard
-  menyembunyikannya di balik tombol `show N expired` agar paket aktif dan paket
-  mendatang terlihat lebih dulu.
-- Baris `expired` diberi badge dan tidak dihitung dalam rata-rata sisa.
+- Semua paket ditampilkan (aktif lebih dulu); paket expired diberi badge dan
+  tidak dihitung dalam rata-rata sisa. Tombol `hide N expired` hanya
+  menyembunyikan riwayat, bukan menghapus data.
+- Panel **Check-in** menampilkan `streak_days`, `daily_credit`, `today_checked_in`,
+  dan `week_progress` dari `/checkin-activity-status`.
 
-**Bonus harian otomatis (OAuth):** CodeBuddy memberi 100 kredit/hari (1000 pada
-hari ke-7) lewat `POST /billing/meter/daily-checkin`. MeAI mengklaimnya otomatis
-maksimal sekali sehari per koneksi OAuth sebelum membaca quota, jadi paket baru
-langsung muncul. Koneksi **API key tidak bisa** check-in — gateway membalas
-`403 API key not allowed for this path or method`; itu sebabnya bonus harian
-tidak bertambah pada koneksi API key.
+**Bonus harian (API key vs OAuth):** CodeBuddy memberi 100 kredit/hari (1000 pada
+hari ke-7) lewat `POST /billing/meter/daily-checkin`. Endpoint klaim ini
+**menolak API key** dengan `403 API key not allowed for this path or method`;
+hanya access token OAuth/client resmi yang bisa klaim. Yang bisa dilakukan
+dengan API key adalah **membaca status** check-in (endpoint
+`/checkin-activity-status` mengizinkan API key), dan MeAI menampilkannya di
+kartu quota. Jadi bonus tidak bertambah karena gateway memang memblokir klaim,
+bukan karena tracker tidak refresh.
 
 **Perbaikan 22 Okt 2026:** paket subscription baru bisa tampil `500/500`
 padahal belum dipakai. Penyebabnya handler lama selalu membaca
@@ -170,7 +173,9 @@ alih-alih mengosongkan kartu.
 
 ---
 
-## 8. CodeBuddy Intl dan error 11128
+## 8. CodeBuddy Intl: 11128 vs 11140
+
+### 8.1 `400/11128 request illegal` (channel verification)
 
 Gejala:
 
@@ -179,27 +184,44 @@ HTTP 400 {"code":11128,"msg":"request illegal", ...}
 "channel verification, possibly because it was not sent from an official client"
 ```
 
-Artinya gateway chat `www.codebuddy.ai` menolak request karena kredensial
-**API key** tidak punya izin channel chat. Ini bukan bug request body:
+Sejak 16 Okt 2026 gateway `www.codebuddy.ai` meminta **header identitas
+percakapan** yang dikirim client resmi:
 
-- Body sudah memakai `system` pertama, `developer` dinormalisasi, dan
-  `tool_choice` string.
-- Header resmi (UA, `X-Product`, `X-IDE-*`, `Origin`, `Referer`,
-  `x-codebuddy-request`) sudah dicoba — tetap `11128`.
-- API key yang sama **berhasil** untuk endpoint billing/quota, dan **gagal**
-  juga saat dipakai oleh CLI resmi (`403 request illegal`).
+```
+X-Conversation-ID
+X-Conversation-Message-ID
+X-Conversation-Request-ID
+X-Request-ID
+X-API-Key
+X-User-Id: anonymous
+X-Agent-Intent: craft
+X-Domain: www.codebuddy.ai
+```
 
-Kesimpulan: API key tersebut valid untuk quota, tetapi **tidak punya izin
-chat**. Perbaikan yang dilakukan MeAI:
+`X-Conversation-ID` diturunkan dari pesan user pertama dan stabil per
+percakapan; tiga header lain unik per request. Tanpa header ini, gateway
+menolak sebelum membaca body. Build ini sudah mengirimnya untuk API key maupun
+OAuth. Jika masih `11128`, periksa proxy yang membuang header `X-Conversation-*`
+atau `X-API-Key`.
 
-1. Provider notice + pesan error yang menjelaskan langkah perbaikannya.
-2. `parseError` memetakan `11128` menjadi pesan actionable (bukan dump JSON).
-3. Urutan auth mode diubah ke **OAuth first**; OAuth adalah kredensial yang
-   diterima gateway chat.
+### 8.2 `403/11140 account restricted` (unusual activity)
 
-**Yang harus dilakukan pengguna:** buat koneksi CodeBuddy Intl baru lewat
-`Connect with OAuth` (bukan API key), lalu gunakan koneksi OAuth itu untuk chat.
-Koneksi API key boleh tetap ada untuk membaca quota.
+Gejala:
+
+```
+HTTP 403 {"code":11140,"msg":"request illegal",
+ "displayMsg":{"en":"Your account has been restricted due to unusual activity"}}
+```
+
+Ini **pembatasan akun di sisi provider**, bukan masalah header, bukan masalah
+OAuth-vs-API-key. API key tetap bisa membaca quota/billing; hanya chat yang
+diblokir. Tidak ada header atau flag di MeAI yang bisa membuka pembatasan ini.
+Yang bisa dilakukan:
+
+1. Tunggu masa review provider (biasanya sementara), lalu coba lagi.
+2. Ajukan appeal lewat `SUBMIT_FEEDBACK` di official client CodeBuddy.
+3. Selama menunggu, pakai `cbcn/<model>` untuk model yang sama (DeepSeek, GLM,
+   Kimi, MiniMax, Hy3) — koneksi CN tidak terkena pembatasan intl.
 
 > Catatan: `codebuddy.ai` (intl) dan `copilot.tencent.com` (CN) adalah region
 > berbeda. Key CN tidak berlaku di intl, dan sebaliknya.
@@ -245,7 +267,9 @@ file config mentah di log/laporan karena memuat kredensial.
 
 | Gejala | Penyebab | Solusi |
 |---|---|---|
-| `400/11128` CodeBuddy Intl | API key tidak punya izin chat | Reconnect lewat OAuth |
+| `400/11128` CodeBuddy Intl | Header official-client hilang/dibuang proxy | Pastikan build terbaru; cek proxy yang memodifikasi header |
+| `403/11140` CodeBuddy Intl | Akun dibatasi provider (unusual activity) | Tunggu review / appeal official client; pakai `cbcn/<model>` sementara |
+| Check-in CodeBuddy 403 | API key tidak diizinkan klaim | Status tetap terbaca; klaim hanya lewat official client/OAuth |
 | `404 No active credentials` | Prefix model salah / provider belum connected | Cek `GET /v1/models`, tambah koneksi |
 | `429` | Key/model kena limit | MeAI pindah key otomatis; cek Quota Tracker |
 | `401` | Token/key expired | Reconnect / update key |

@@ -125,6 +125,66 @@ function isExpiredPack(acc, resetAt, isBonus) {
 // allowed for this path or method"), so only OAuth access tokens may claim.
 // One attempt per token per day per process: code 10001 = already claimed.
 const lastCheckInDay = new Map();
+const checkInStatusCache = new Map();
+const CHECKIN_STATUS_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Read-only check-in activity status. This path accepts API keys on CN
+ * (verified 2026-10-22) even though the claim path does not. It answers the
+ * question the quota card could not: "is a check-in available today, and how
+ * long is the streak?" A failed read is non-fatal and never blocks quota.
+ */
+async function fetchCheckInStatus(providerId, token, proxyOptions) {
+  const cacheKey = `${providerId}:${String(token).slice(-12)}`;
+  const cached = checkInStatusCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < CHECKIN_STATUS_TTL_MS) {
+    return cached.value;
+  }
+
+  const urls = U(providerId).checkInStatusUrls || [];
+  for (const url of urls) {
+    try {
+      const response = await proxyAwareFetch(url, {
+        method: "POST",
+        headers: {
+          ...(PROVIDERS[providerId]?.headers || {}),
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: "{}",
+        signal: AbortSignal.timeout(8000),
+      }, proxyOptions);
+
+      // 404/405 = this deployment uses the other path variant.
+      if (response.status === 404 || response.status === 405) continue;
+      if (!response.ok) break;
+
+      const json = await response.json().catch(() => null);
+      if (json?.code !== 0 || !json?.data) break;
+      const d = json.data;
+      const value = {
+        active: d.active === true,
+        todayCheckedIn: d.today_checked_in === true,
+        streakDays: toNumber(d.streak_days) ?? 0,
+        dailyCredit: toNumber(d.daily_credit) ?? 0,
+        todayCredit: toNumber(d.today_credit) ?? 0,
+        totalCredits: toNumber(d.total_credits) ?? 0,
+        weekProgress: Array.isArray(d.week_progress) ? d.week_progress.map(Boolean) : [],
+        activityName: d.activity_name || d.theme_name || "",
+        endAt: parseResetTime(d.end_time),
+      };
+      checkInStatusCache.set(cacheKey, { at: Date.now(), value });
+      return value;
+    } catch {
+      break;
+    }
+  }
+
+  // Cache failures too: a dead endpoint must not be retried on every 5s refresh.
+  checkInStatusCache.set(cacheKey, { at: Date.now(), value: null });
+  return null;
+}
 
 function checkInDayKey(providerId, token) {
   return `${providerId}:${String(token).slice(-12)}:${new Date().toISOString().slice(0, 10)}`;
@@ -178,6 +238,9 @@ async function getCodeBuddyUsage(providerId, accessToken, apiKey, providerSpecif
     // Claim today's bonus before reading the balance so a fresh pack shows up
     // in the same response. API-key connections skip this (gateway 403).
     if (accessToken) await maybeClaimDailyBonus(providerId, accessToken, proxyOptions);
+
+    // Read-only status is safe for API keys and runs in parallel with quota.
+    const checkInPromise = fetchCheckInStatus(providerId, token, proxyOptions);
 
     const response = await proxyAwareFetch(U(providerId).url, {
       method: "POST",
@@ -262,8 +325,9 @@ async function getCodeBuddyUsage(providerId, accessToken, apiKey, providerSpecif
 
     const basePkg = refills[0]?.acc || accounts[0] || {};
     const plan = basePkg.PackageName || basePkg.SubProductName || "CodeBuddy";
+    const checkIn = await checkInPromise;
 
-    return { plan, quotas };
+    return { plan, quotas, ...(checkIn ? { checkIn } : {}) };
   } catch (error) {
     return { message: `CodeBuddy (${providerId}) error: ${error.message}` };
   }
