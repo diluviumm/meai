@@ -1598,7 +1598,16 @@ export default function ProviderLimits() {
                     {!quota.checkIn.todayCheckedIn && conn.authType !== "oauth" && (
                       <p className="mt-1 text-text-muted">
                         Status ini read-only untuk API key: gateway menolak klaim check-in dari API key (403).
-                        Quota bulanan dan chat tetap memakai API key; tidak perlu OAuth.
+                        Klaim hanya dari client resmi; quota bulanan dan chat tetap memakai API key.
+                        {" "}
+                        <a
+                          href={conn.provider === "codebuddy-cn" ? "https://copilot.tencent.com" : "https://www.codebuddy.ai"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold underline underline-offset-2 hover:text-text-primary"
+                        >
+                          Buka situs CodeBuddy
+                        </a>
                       </p>
                     )}
                   </div>
@@ -1606,7 +1615,15 @@ export default function ProviderLimits() {
                 {["codebuddy-cn", "codebuddy-intl"].includes(conn.provider) && conn.authType !== "oauth" && !quota?.checkIn?.active && !error && !isLoading && (
                   <p className="mt-2 rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-1.5 text-[10px] leading-relaxed text-sky-700 dark:text-sky-300">
                     Tidak ada aktivitas check-in aktif untuk koneksi ini. Quota bulanan tetap terbaca
-                    dan chat tetap memakai API key.
+                    dan chat tetap memakai API key.{" "}
+                    <a
+                      href={conn.provider === "codebuddy-cn" ? "https://copilot.tencent.com" : "https://www.codebuddy.ai"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold underline underline-offset-2 hover:text-text-primary"
+                    >
+                      Buka situs CodeBuddy
+                    </a>
                   </p>
                 )}
                 {hiddenQuotaRows.length > 0 && (
