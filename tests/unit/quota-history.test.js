@@ -58,6 +58,24 @@ describe("quota history + burn-rate forecast", () => {
     expect(forecast.short).toContain("resets");
   });
 
+  it("uses 'expires' for a non-recurring pack", () => {
+    const now = 10 * HOUR;
+    const forecast = forecastQuota(
+      {
+        used: 10,
+        total: 500,
+        recurring: false,
+        resetAt: new Date(now + 24 * HOUR).toISOString(),
+      },
+      [
+        { t: 0, used: 0, pct: 100 },
+        { t: 2 * HOUR, used: 10, pct: 90 },
+      ],
+      now,
+    );
+    expect(forecast.short).toContain("expires");
+  });
+
   it("returns no forecast until there are two samples spanning 12 minutes", () => {
     expect(forecastQuota({ used: 1, total: 10 }, [], 0)).toBeNull();
     expect(forecastQuota({ used: 1, total: 10 }, [{ t: 0, used: 0, pct: 100 }], 0)).toBeNull();

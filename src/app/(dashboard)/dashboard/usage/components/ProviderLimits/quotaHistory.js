@@ -66,12 +66,13 @@ export function forecastQuota(quota, samples, now = Date.now()) {
   const daysLeft = burnPerDay > 0 ? remaining / burnPerDay : null;
   const resetMs = quota.resetAt ? new Date(quota.resetAt).getTime() : NaN;
   const resetDays = Number.isFinite(resetMs) ? (resetMs - now) / 86_400_000 : null;
+  const resetWord = quota.recurring === false ? "expires" : "resets";
 
   let short = "flat";
   let tone = "text-text-muted";
   if (daysLeft != null) {
     if (resetDays != null && resetDays > 0 && resetDays < daysLeft) {
-      short = `resets ${resetDays < 1 ? "<1d" : `in ${Math.ceil(resetDays)}d`}`;
+      short = `${resetWord} ${resetDays < 1 ? "<1d" : `in ${Math.ceil(resetDays)}d`}`;
       tone = "text-text-muted";
     } else if (daysLeft < 1) {
       short = `≈${Math.max(1, Math.round(daysLeft * 24))}h left`;
