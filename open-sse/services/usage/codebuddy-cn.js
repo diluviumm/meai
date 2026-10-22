@@ -154,9 +154,12 @@ async function maybeClaimDailyBonus(providerId, accessToken, proxyOptions) {
       if (response.status === 404 || response.status === 405) continue;
 
       const json = await response.json().catch(() => null);
-      if ((response.ok || response.status === 400) && (json?.code === 0 || json?.code === 10001)) {
-        lastCheckInDay.set(key, true);
-      }
+      // code 0 = claimed, code 10001 = already claimed today (idempotent).
+      // Any terminal answer also marks the day so a broken check-in cannot be
+      // retried on every 5s quota refresh.
+      const claimed = (response.ok || response.status === 400)
+        && (json?.code === 0 || json?.code === 10001);
+      lastCheckInDay.set(key, claimed);
       return;
     } catch {
       // Fail-open: a check-in failure must never block quota rendering.
