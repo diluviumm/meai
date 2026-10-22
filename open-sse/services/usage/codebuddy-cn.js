@@ -171,6 +171,9 @@ async function fetchCheckInStatus(providerId, token, proxyOptions) {
         todayCredit: toNumber(d.today_credit) ?? 0,
         totalCredits: toNumber(d.total_credits) ?? 0,
         weekProgress: Array.isArray(d.week_progress) ? d.week_progress.map(Boolean) : [],
+        weekCheckinDays:
+          toNumber(d.week_checkin_days) ??
+          (Array.isArray(d.week_progress) ? d.week_progress.filter(Boolean).length : 0),
         activityName: d.activity_name || d.theme_name || "",
         endAt: parseResetTime(d.end_time),
       };
@@ -275,13 +278,19 @@ async function getCodeBuddyUsage(providerId, accessToken, apiKey, providerSpecif
       const bonus = isBonusPack(acc);
       const balance = readBalance(acc, bonus);
       const resetAt = parseResetTime(acc.CycleEndTime);
+      // A one-shot pack can be dead for two different reasons: its window
+      // closed (time) or every credit was consumed (used == total). The UI
+      // must distinguish "expired" from "used up" or users think quota
+      // vanished while it was actually spent.
+      const usedUp = bonus && balance.total > 0 && balance.used >= balance.total - 0.01;
       return {
         acc,
         bonus,
         ...balance,
         resetAt,
         resetMs: resetAt ? new Date(resetAt).getTime() : Number.POSITIVE_INFINITY,
-        expired: isExpiredPack(acc, resetAt, bonus),
+        expired: isExpiredPack(acc, resetAt, bonus) || usedUp,
+        exhausted: usedUp,
       };
     });
 
@@ -312,7 +321,7 @@ async function getCodeBuddyUsage(providerId, accessToken, apiKey, providerSpecif
     });
     // Bonus packs: one-shot credits, resetAt is a hard expiry. Keep the flag so
     // the dashboard can collapse dead packs instead of crowding out live ones.
-    bonuses.forEach(({ used, total, resetAt, expired }, i) => {
+    bonuses.forEach(({ used, total, resetAt, expired, exhausted }, i) => {
       quotas[`Bonus Pack ${i + 1}`] = {
         used,
         total,
@@ -320,6 +329,7 @@ async function getCodeBuddyUsage(providerId, accessToken, apiKey, providerSpecif
         unlimited: false,
         recurring: false,
         expired,
+        exhausted,
       };
     });
 

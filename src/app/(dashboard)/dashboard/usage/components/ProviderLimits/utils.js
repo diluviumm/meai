@@ -650,6 +650,7 @@ export function parseQuotaData(provider, data) {
               resetAt: quota.resetAt || null,
               recurring: quota.recurring !== false,
               expired: quota.expired === true,
+              exhausted: quota.exhausted === true,
               remainingPercentage:
                 total > 0
                   ? Math.max(0, Math.min(100, ((total - used) / total) * 100))

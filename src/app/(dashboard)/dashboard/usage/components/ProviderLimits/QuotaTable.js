@@ -148,7 +148,10 @@ export default function QuotaTable({
 
   useEffect(() => {
     setPage(1);
-  }, [sortMode, quotas, showExpired]);
+    // Do NOT depend on `quotas`: it is a new array on every 5s refresh, and
+    // resetting here made the table jump back to page 1 while the user was
+    // reading page 2. totalPages clamps the page when rows disappear.
+  }, [sortMode, showExpired]);
 
   useEffect(() => {
     setPage((currentPage) => Math.min(currentPage, totalPages));
@@ -202,6 +205,7 @@ export default function QuotaTable({
           const isUnlimited = quota.unlimited === true;
           const isCreditBalance = quota.isCreditBalance === true;
           const isExpired = quota.expired === true;
+          const isExhausted = quota.exhausted === true;
           const colors = isCreditBalance
             ? { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500", bgLight: "bg-blue-500/10", emoji: "💰" }
             : getColorClasses(quota.remaining);
@@ -212,7 +216,9 @@ export default function QuotaTable({
           // and their resetAt is a hard expiry, so word it as "expires".
           const recurring = quota.recurring !== false;
           const countdownLabel = isExpired
-            ? "expired"
+            ? isExhausted
+              ? "used up"
+              : "expired"
             : recurring
               ? `in ${countdown}`
               : `expires in ${countdown}`;
@@ -234,7 +240,7 @@ export default function QuotaTable({
                 </span>
                 {isExpired && (
                   <span className="shrink-0 rounded-full bg-black/5 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-text-muted dark:bg-white/10">
-                    expired
+                    {isExhausted ? "used up" : "expired"}
                   </span>
                 )}
                 {hasHideAction && (

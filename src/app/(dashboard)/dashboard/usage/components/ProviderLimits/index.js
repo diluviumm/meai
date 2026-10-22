@@ -1571,6 +1571,7 @@ export default function ProviderLimits() {
                         ))}
                       </span>
                       <span>Streak {quota.checkIn.streakDays || 0} hari</span>
+                      <span>{quota.checkIn.weekCheckinDays || 0}/7 minggu ini</span>
                       <span>Total {quota.checkIn.totalCredits || 0} kredit</span>
                     </div>
                     {!quota.checkIn.todayCheckedIn && conn.authType !== "oauth" && (

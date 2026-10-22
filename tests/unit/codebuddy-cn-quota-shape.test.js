@@ -145,6 +145,7 @@ describe("CodeBuddy quota balance extraction", () => {
     });
     expect(usage.quotas["Bonus Pack 1"].expired).toBe(false);
     expect(usage.quotas["Bonus Pack 2"].expired).toBe(true);
+    expect(usage.quotas["Bonus Pack 2"].exhausted).toBe(true);
     // Active pack is listed before the expired one.
     expect(Object.keys(usage.quotas).slice(0, 2)).toEqual(["Monthly", "Bonus Pack 1"]);
   });
@@ -163,7 +164,7 @@ describe("CodeBuddy quota balance extraction", () => {
     ]);
 
     const usage = await getCodeBuddyCnUsage(null, "test-key", {}, null);
-    expect(usage.quotas["Bonus Pack 1"]).toMatchObject({ used: 100, total: 100, expired: true });
+    expect(usage.quotas["Bonus Pack 1"]).toMatchObject({ used: 100, total: 100, expired: true, exhausted: true });
   });
 
   it("uses Cycle* only for real multi-cycle refills", async () => {
