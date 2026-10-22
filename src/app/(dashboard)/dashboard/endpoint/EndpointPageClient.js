@@ -12,7 +12,7 @@ import {
   REACHABLE_MISS_THRESHOLD,
   CLIENT_PING_FAST_MS,
 } from "./endpointConstants";
-import { clientPingUrl, clientPingAny } from "./endpointPing";
+import { clientPingUrl } from "./endpointPing";
 import useSettingsStore from "@/store/settingsStore";
 import EndpointRow from "./components/EndpointRow";
 import StatusAlert from "./components/StatusAlert";
@@ -178,7 +178,11 @@ export default function APIPageClient({ machineId }) {
     const probeBoth = async () => {
       if (document.hidden) return;
       if (tunnelEnabled && (tunnelUrl || tunnelPublicUrl)) {
-        const ok = await clientPingAny(tunnelPublicUrl, tunnelUrl);
+        // Prefer the stable abc-tunnel shortlink. The direct trycloudflare
+        // hostname can expire while the worker route stays healthy; pinging
+        // both logged noisy ERR_NAME_NOT_RESOLVED errors on every page load.
+        let ok = tunnelPublicUrl ? await clientPingUrl(tunnelPublicUrl) : false;
+        if (!ok && tunnelUrl) ok = await clientPingUrl(tunnelUrl);
         tunnelClientReachableRef.current = ok;
         if (ok) { tunnelMissRef.current = 0; setTunnelReachable(true); if (!tunnelEverReachableRef.current) { tunnelEverReachableRef.current = true; setTunnelEverReachable(true); } }
         else { tunnelMissRef.current += 1; if (tunnelMissRef.current >= REACHABLE_MISS_THRESHOLD) setTunnelReachable(false); }
