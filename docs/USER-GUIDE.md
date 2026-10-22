@@ -88,8 +88,14 @@ model berikutnya. Combo juga dipakai untuk vision adapter.
 
 1. `Combo & Vision Adapter` → `New Combo`.
 2. Tambahkan model dengan urutan fallback.
-3. Pilih strategi `fallback` atau `round-robin`.
-4. Panggil combo sebagai nama model di `/v1`.
+3. Model picker mendukung pencarian:
+   - substring biasa: `claude`
+   - exclusion: `claude -haiku` atau `claude !embed`
+   - regex: `/^gpt-5/` atau `/sonnet|opus/i`
+   - **Select All (N)** / **Deselect All (N)** bekerja pada hasil filter,
+     bukan seluruh katalog.
+4. Pilih strategi `fallback` atau `round-robin`.
+5. Panggil combo sebagai nama model di `/v1`.
 
 > Combo mengirim SSE walau `stream:false`. Untuk client non-stream yang ketat
 > (Hindsight, SDK pihak ketiga), panggil **model langsung**, bukan nama combo.
@@ -173,14 +179,16 @@ alih-alih mengosongkan kartu.
 
 ### 7.5 Sparkline & burn-rate forecast
 
-- Riwayat quota disimpan **lokal di browser** (`localStorage`, key
-  `meai.quotaHistory.v1:<connectionId>`), bukan di DB dan tidak dikirim ke
-  provider.
-- Satu sampel per quota per **60 detik**, maksimal **240 sampel** (±4 jam);
-  seri lebih tua dari 7 hari dibuang.
+- Sampel quota disimpan di **SQLite server** tabel `quotaHistory`
+  (`connectionId`, `quotaName`, `sampledAt`, `used`, `total`, `pct`), sehingga
+  riwayat yang sama terlihat di semua device yang membuka dashboard.
+- Satu sampel per quota per **60 detik** (primary key mencegah duplikat);
+  retensi **7 hari**. Endpoint: `GET /api/usage/<connectionId>/history?hours=24&limit=240`.
 - Sparkline butuh ≥2 sampel. Forecast `≈Nd left` butuh rentang ≥12 menit dan
   memakai slope `used` sejak sampel pertama; jika `used` turun (window reset),
   seri lama dibuang agar tidak menghasilkan burn-rate negatif.
+- Jika endpoint riwayat gagal, browser memakai riwayat lokal
+  (`localStorage`, ±4 jam) sebagai fallback; bukan sumber utama.
 - Jika `resetAt` lebih dekat daripada hasil forecast, label menampilkan
   `resets in Nd` — reset provider lebih otoritatif daripada ekstrapolasi.
 - Forecast adalah estimasi pemakaian, bukan janji provider; hover label untuk

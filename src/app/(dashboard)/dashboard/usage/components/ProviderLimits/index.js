@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import QuotaTable from "./QuotaTable";
-import { recordQuotaHistory } from "./quotaHistory";
+import { fetchQuotaHistory, recordQuotaHistory } from "./quotaHistory";
 import Toggle from "@/shared/components/Toggle";
 import Tooltip from "@/shared/components/Tooltip";
 import {
@@ -359,7 +359,16 @@ export default function ProviderLimits() {
 
       // Parse quota data using provider-specific parser
       const parsedQuotas = parseQuotaData(provider, data);
-      const history = recordQuotaHistory(connectionId, parsedQuotas);
+      // Local history is the offline fallback; SQLite history is authoritative
+      // and shared across devices. Both are written on the same one-minute bucket.
+      const localHistory = recordQuotaHistory(connectionId, parsedQuotas);
+      let history = localHistory;
+      try {
+        const serverHistory = await fetchQuotaHistory(connectionId);
+        if (Object.keys(serverHistory).length > 0) history = serverHistory;
+      } catch {
+        history = localHistory;
+      }
 
       const quotaEntry = {
         quotas: parsedQuotas,

@@ -110,6 +110,8 @@ const FEATURES = [
     steps: [
       "Buka Combo & Vision Adapter → New Combo.",
       "Tambahkan beberapa model dengan urutan fallback.",
+      "Di model picker, cari dengan substring, exclusion (!kata atau -kata), atau regex (/pola/); contoh: claude -haiku.",
+      "Gunakan Select All (N) / Deselect All (N) untuk menambah atau membuang semua model hasil filter sekaligus.",
       "Pilih strategi fallback atau round-robin.",
       "Panggil combo lewat /v1 dengan nama combo sebagai model.",
     ],
@@ -145,7 +147,7 @@ const FEATURES = [
       "Semua paket ditampilkan (aktif lebih dulu, expired diberi badge); tombol hide expired hanya menyembunyikan riwayat, bukan menghapus data.",
       "Jika ada baris yang pernah disembunyikan, bagian Hidden punya tombol Show all (N) untuk menampilkan semuanya sekaligus.",
       "Panel Check-in menunjukkan streak, kredit hari ini, dan status klaim — read-only untuk koneksi API key.",
-      "Sparkline sisa quota muncul setelah ≥2 sampel (1 sampel/menit, riwayat lokal ±4 jam); label ≈Nd left adalah forecast burn-rate setelah ≥12 menit data.",
+      "Sparkline sisa quota muncul setelah ≥2 sampel (1 sampel/menit, riwayat tersimpan di SQLite server ±7 hari); label ≈Nd left adalah forecast burn-rate setelah ≥12 menit data.",
     ],
     tip: "Bonus pack tidak bertambah otomatis hanya karena halaman dibuka. Paket baru datang dari kampanye provider atau check-in; klaim check-in dibatasi gateway untuk API key (403).",
     href: "/dashboard/quota",
@@ -265,7 +267,7 @@ const FAQ = [
   },
   {
     q: "Kenapa sparkline/forecast quota kosong?",
-    a: "Sparkline butuh minimal 2 sampel dan forecast butuh rentang ≥12 menit. MeAI mencatat 1 sampel/menit di localStorage browser (bukan DB), maksimal ±4 jam; buka halaman Quota beberapa menit lalu refresh. Jika quota reset (used turun), seri lama dibuang agar burn-rate tidak negatif.",
+    a: "Sparkline butuh minimal 2 sampel dan forecast butuh rentang ≥12 menit. MeAI mencatat 1 sampel/menit ke tabel SQLite server (dibagi lintas device), retensi 7 hari; buka halaman Quota beberapa menit lalu refresh. Jika endpoint riwayat gagal, browser memakai riwayat lokal sebagai fallback. Jika quota reset (used turun), seri lama dibuang agar burn-rate tidak negatif.",
   },
   {
     q: "Apakah API key CodeBuddy Intl bisa dipakai untuk chat?",

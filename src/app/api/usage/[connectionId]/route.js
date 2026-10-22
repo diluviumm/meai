@@ -2,6 +2,7 @@
 import "open-sse/index.js";
 
 import { getProviderConnectionById, updateProviderConnection } from "@/lib/localDb";
+import { recordQuotaSnapshot } from "@/lib/db";
 import { getUsageForProvider } from "open-sse/services/usage.js";
 import { isUnrecoverableRefreshError } from "open-sse/services/tokenRefresh.js";
 import { getExecutor } from "open-sse/executors/index.js";
@@ -211,6 +212,12 @@ export async function GET(request, { params }) {
     }
 
     quotaCache.set(connection.id, { at: Date.now(), payload: usage });
+    try {
+      await recordQuotaSnapshot(connection.id, usage?.quotas || usage);
+    } catch (historyError) {
+      // History must never break quota reads; the dashboard falls back to local history.
+      console.warn(`[Usage] ${connection.provider}: quota history write failed: ${historyError.message}`);
+    }
     return Response.json(usage);
   } catch (error) {
     const provider = connection?.provider ?? "unknown";

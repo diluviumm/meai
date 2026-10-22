@@ -67,6 +67,12 @@ export {
   saveRequestDetail, getRequestDetails, getRequestDetailById, getDistinctProviders,
 } from "./repos/requestDetailsRepo.js";
 
+// Quota history (server-side, cross-device sparkline + burn-rate)
+export {
+  recordQuotaSnapshot, getQuotaHistory, clearQuotaHistory,
+  normalizeQuotaRows, QUOTA_HISTORY_RETENTION_MS,
+} from "./repos/quotaHistoryRepo.js";
+
 // Export/import full DB
 export async function exportDb() {
   const db = await getAdapter();

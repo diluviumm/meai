@@ -1,9 +1,10 @@
-// Client-side quota history + burn-rate forecast.
+// Quota history + burn-rate forecast.
 //
-// History is intentionally local (localStorage): it is a view-only trend for
-// the browser that is open, not billing data. One sample per quota per minute,
-// capped at 240 samples (~4 hours), and series older than 7 days are dropped.
-// Pure helpers are exported separately so they can be unit-tested without a DOM.
+// The primary store is SQLite on the server (`quotaHistory`, written by the
+// usage route; see /api/usage/[connectionId]/history). The localStorage
+// helpers below are an offline fallback so the sparkline still works when the
+// history endpoint is unreachable. Pure helpers are exported separately so
+// they can be unit-tested without a DOM.
 
 export const QUOTA_HISTORY_VERSION = 1;
 export const QUOTA_HISTORY_LIMIT = 240;
@@ -11,6 +12,8 @@ export const QUOTA_SAMPLE_INTERVAL_MS = 60_000;
 export const QUOTA_HISTORY_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const STORAGE_PREFIX = `meai.quotaHistory.v${QUOTA_HISTORY_VERSION}:`;
+const SERVER_HISTORY_TTL_MS = 30_000;
+const serverHistoryCache = new Map();
 
 function validNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -97,7 +100,7 @@ export function forecastQuota(quota, samples, now = Date.now()) {
     title:
       `Burn rate: ${burnPerDay.toFixed(2)} ${quota.unit || "units"}/day` +
       (daysLeft != null ? ` · sisa ≈ ${daysLeft.toFixed(1)} hari` : "") +
-      ` · ${clean.length} sampel / ${elapsedHours.toFixed(1)} jam (riwayat lokal)`,
+      ` · ${clean.length} sampel / ${elapsedHours.toFixed(1)} jam (riwayat tersimpan)`,
   };
 }
 
@@ -123,6 +126,35 @@ export function loadQuotaHistory(connectionId) {
   } catch {
     return {};
   }
+}
+
+/**
+ * Fetch the cross-device history stored in SQLite. Cached for 30s so the
+ * 5s quota refresh does not create 12 history requests per minute.
+ * Throws on network failure; callers fall back to loadQuotaHistory().
+ */
+export async function fetchQuotaHistory(connectionId, { hours = 24, limit = 240, force = false } = {}) {
+  if (typeof window === "undefined" || !connectionId) return {};
+  const cached = serverHistoryCache.get(connectionId);
+  if (!force && cached && Date.now() - cached.at < SERVER_HISTORY_TTL_MS) {
+    return cached.series;
+  }
+
+  const query = new URLSearchParams({ hours: String(hours), limit: String(limit) });
+  const response = await fetch(
+    `/api/usage/${encodeURIComponent(connectionId)}/history?${query.toString()}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) throw new Error(`Quota history HTTP ${response.status}`);
+  const payload = await response.json();
+  const series = payload?.series && typeof payload.series === "object" ? payload.series : {};
+  serverHistoryCache.set(connectionId, { at: Date.now(), series });
+  return series;
+}
+
+export function invalidateQuotaHistoryCache(connectionId) {
+  if (connectionId) serverHistoryCache.delete(connectionId);
+  else serverHistoryCache.clear();
 }
 
 /**
