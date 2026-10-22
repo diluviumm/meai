@@ -1555,7 +1555,7 @@ export default function ProviderLimits() {
                     {quota.hint}
                   </p>
                 )}
-                {quota?.checkIn && !error && !isLoading && (
+                {quota?.checkIn?.active && !error && !isLoading && (
                   <div className="mt-2 rounded-md border border-emerald-500/20 bg-emerald-500/[0.07] px-2 py-1.5 text-[10px] leading-relaxed text-emerald-800 dark:text-emerald-300">
                     <div className="flex items-center justify-between gap-2">
                       <span className="min-w-0 truncate font-semibold">
@@ -1599,10 +1599,10 @@ export default function ProviderLimits() {
                     )}
                   </div>
                 )}
-                {["codebuddy-cn", "codebuddy-intl"].includes(conn.provider) && conn.authType !== "oauth" && !quota?.checkIn && !error && !isLoading && (
+                {["codebuddy-cn", "codebuddy-intl"].includes(conn.provider) && conn.authType !== "oauth" && !quota?.checkIn?.active && !error && !isLoading && (
                   <p className="mt-2 rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-1.5 text-[10px] leading-relaxed text-sky-700 dark:text-sky-300">
-                    Koneksi ini memakai API key. Status check-in tidak tersedia dari endpoint provider ini;
-                    quota bulanan tetap terbaca dan chat tetap memakai API key.
+                    Tidak ada aktivitas check-in aktif untuk koneksi ini. Quota bulanan tetap terbaca
+                    dan chat tetap memakai API key.
                   </p>
                 )}
                 {hiddenQuotaRows.length > 0 && (
