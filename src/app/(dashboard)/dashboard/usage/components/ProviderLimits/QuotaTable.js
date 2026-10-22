@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatResetTime, getRemainingPercentage } from "./utils";
+import { forecastQuota, sparklinePoints } from "./quotaHistory";
 
 const PAGE_SIZE = 10;
 
@@ -81,6 +82,30 @@ function sortQuotas(quotas, sortMode) {
   return quotas;
 }
 
+/** Tiny remaining-percentage trend; only rendered once two samples exist. */
+function TrendSparkline({ samples, tone = "text-text-muted" }) {
+  const points = useMemo(() => sparklinePoints(samples, 100, 18), [samples]);
+  if (!points) return null;
+  return (
+    <svg
+      viewBox="0 0 100 18"
+      preserveAspectRatio="none"
+      className={`h-2.5 min-w-[32px] flex-1 ${tone}`}
+      aria-hidden="true"
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
 function HideQuotaButton({ quota, onHideQuota, className }) {
   return (
     <button
@@ -102,6 +127,7 @@ function HideQuotaButton({ quota, onHideQuota, className }) {
  */
 export default function QuotaTable({
   quotas = [],
+  history = {},
   compact = false,
   sortMode = "default",
   showSortLabel = false,
@@ -206,6 +232,11 @@ export default function QuotaTable({
           const isCreditBalance = quota.isCreditBalance === true;
           const isExpired = quota.expired === true;
           const isExhausted = quota.exhausted === true;
+          const trendSamples = history?.[quota.name] || [];
+          const trend =
+            !isExpired && !isUnlimited && !isCreditBalance && Number(quota.total) > 0
+              ? forecastQuota(quota, trendSamples)
+              : null;
           const colors = isCreditBalance
             ? { text: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500", bgLight: "bg-blue-500/10", emoji: "💰" }
             : getColorClasses(quota.remaining);
@@ -317,6 +348,18 @@ export default function QuotaTable({
                     {isUnlimited ? "Unlimited" : isCreditBalance ? "" : `${quota.remaining}% free`}
                   </span>
                 </div>
+
+                {trend && (
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <TrendSparkline samples={trendSamples} tone={trend.tone} />
+                    <span
+                      className={`shrink-0 text-[9px] font-medium leading-none ${trend.tone}`}
+                      title={trend.title}
+                    >
+                      {trend.short}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Reset time — lebar tetap supaya track bar konsisten antar baris

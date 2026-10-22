@@ -227,9 +227,9 @@ export default function Sidebar({ onClose }) {
               variant="secondary"
               onClick={() => handleForkApply("rebuild")}
               disabled={forkBusy || forkApplying}
-              title="Build ulang + restart service tanpa mengubah kode (pemulihan cepat)"
+              title="Build ulang + restart service TANPA mengambil commit upstream (bukan update)"
             >
-              Rebuild & Restart
+              Rebuild saja
             </Button>
             {typeof forkState === "string" && /^done/.test(forkState) ? (
               <Button variant="primary" onClick={() => globalThis.location.reload()}>Muat ulang</Button>
@@ -262,10 +262,18 @@ export default function Sidebar({ onClose }) {
               Status terakhir: {forkState}
             </div>
           )}
+          {!forkBusy && typeof forkState === "string" && /^done:.*applied=0/.test(forkState) && forkCheck?.behind > 0 && (
+            <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+              Rebuild/restart hanya membangun ulang kode yang sekarang — <b>0 commit upstream diterapkan</b>.
+              Klik <b>Update & Build</b> untuk mengambil {forkCheck.behind} patch upstream.
+            </p>
+          )}
           {forkCheck && forkCheck.behind > 0 && (
             <>
               <p className="text-xs text-text-muted">
-                {forkCheck.behind} commit upstream baru — hanya yang aman (tak menyentuh file fork) yang di-cherry-pick, lalu build & restart otomatis.
+                {forkCheck.behind} patch upstream belum diterapkan. <b>Update & Build</b> mengambil patch yang aman
+                (yang tidak menyentuh file kustom fork), lalu build + restart otomatis. Patch yang menyentuh file fork
+                ditampilkan sebagai review-manual dan tidak dipaksa.
               </p>
               <ol className="max-h-56 space-y-1 overflow-y-auto custom-scrollbar">
                 {(forkCheck.commits || []).map((c) => (

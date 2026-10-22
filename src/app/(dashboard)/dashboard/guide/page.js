@@ -145,6 +145,7 @@ const FEATURES = [
       "Semua paket ditampilkan (aktif lebih dulu, expired diberi badge); tombol hide expired hanya menyembunyikan riwayat, bukan menghapus data.",
       "Jika ada baris yang pernah disembunyikan, bagian Hidden punya tombol Show all (N) untuk menampilkan semuanya sekaligus.",
       "Panel Check-in menunjukkan streak, kredit hari ini, dan status klaim — read-only untuk koneksi API key.",
+      "Sparkline sisa quota muncul setelah ≥2 sampel (1 sampel/menit, riwayat lokal ±4 jam); label ≈Nd left adalah forecast burn-rate setelah ≥12 menit data.",
     ],
     tip: "Bonus pack tidak bertambah otomatis hanya karena halaman dibuka. Paket baru datang dari kampanye provider atau check-in; klaim check-in dibatasi gateway untuk API key (403).",
     href: "/dashboard/quota",
@@ -260,11 +261,15 @@ const FAQ = [
   },
   {
     q: "Bisakah check-in CodeBuddy dilakukan dengan API key?",
-    a: "Tidak. Endpoint /billing/meter/daily-checkin menolak API key dengan 403 'API key not allowed for this path or method'. Yang bisa dibaca dengan API key adalah status check-in (/checkin-activity-status), dan MeAI menampilkannya di kartu quota. Klaim hanya bisa lewat client resmi/OAuth; tidak ada header atau trik API key yang membuka endpoint ini.",
+    a: "Tidak. Endpoint /billing/meter/daily-checkin menolak API key dengan 403 'API key not allowed for this path or method'. Yang bisa dibaca dengan API key adalah status check-in (/checkin-activity-status), dan MeAI menampilkannya di kartu quota. Klaim hanya bisa lewat client resmi/OAuth; client resmi mengirim X-Device-Token dari security SDK yang tidak bisa dibuat dari API key (proyek open-source seperti magpie menandai kondisi ini 'own-app' dan menyuruh check-in di app resmi). Tidak ada header atau trik API key yang membuka endpoint ini.",
+  },
+  {
+    q: "Kenapa sparkline/forecast quota kosong?",
+    a: "Sparkline butuh minimal 2 sampel dan forecast butuh rentang ≥12 menit. MeAI mencatat 1 sampel/menit di localStorage browser (bukan DB), maksimal ±4 jam; buka halaman Quota beberapa menit lalu refresh. Jika quota reset (used turun), seri lama dibuang agar burn-rate tidak negatif.",
   },
   {
     q: "Apakah API key CodeBuddy Intl bisa dipakai untuk chat?",
-    a: "Ya, API key tetap jalur utama. Gateway intl meminta header official-client X-Conversation-*/X-API-Key/X-User-Id; build ini sudah mengirimkannya. Jika muncul 11128, header dibuang proxy. Jika muncul 11140, akun sedang dibatasi provider karena unusual activity — bukan masalah OAuth; quota tetap terbaca dan chat pulih setelah pembatasan berakhir.",
+    a: "Ya, API key tetap jalur utama. Gateway intl meminta header official-client X-Conversation-*/X-API-Key/X-User-Id; build ini sudah mengirimkannya. Jika muncul 11128, header dibuang proxy. Jika muncul 11140, akun sedang dibatasi provider karena unusual activity — bukan masalah OAuth; quota tetap terbaca. Pembatasan ini account-level: tidak ada header/bypass yang aman. Pulihkan lewat appeal 'Submit feedback' di official client, tunggu review, atau pakai API key akun lain; selama menunggu gunakan model yang sama lewat cbcn/*.",
   },
 ];
 

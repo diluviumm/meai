@@ -171,6 +171,21 @@ Jika provider membalas error sementara (mis. 505 setelah tab lama), MeAI
 menampilkan data terakhir yang masih segar (≤5 menit) dengan flag `stale`,
 alih-alih mengosongkan kartu.
 
+### 7.5 Sparkline & burn-rate forecast
+
+- Riwayat quota disimpan **lokal di browser** (`localStorage`, key
+  `meai.quotaHistory.v1:<connectionId>`), bukan di DB dan tidak dikirim ke
+  provider.
+- Satu sampel per quota per **60 detik**, maksimal **240 sampel** (±4 jam);
+  seri lebih tua dari 7 hari dibuang.
+- Sparkline butuh ≥2 sampel. Forecast `≈Nd left` butuh rentang ≥12 menit dan
+  memakai slope `used` sejak sampel pertama; jika `used` turun (window reset),
+  seri lama dibuang agar tidak menghasilkan burn-rate negatif.
+- Jika `resetAt` lebih dekat daripada hasil forecast, label menampilkan
+  `resets in Nd` — reset provider lebih otoritatif daripada ekstrapolasi.
+- Forecast adalah estimasi pemakaian, bukan janji provider; hover label untuk
+  melihat burn/day, jumlah sampel, dan rentang jam.
+
 ---
 
 ## 8. CodeBuddy Intl: 11128 vs 11140
@@ -225,6 +240,35 @@ Yang bisa dilakukan:
 
 > Catatan: `codebuddy.ai` (intl) dan `copilot.tencent.com` (CN) adalah region
 > berbeda. Key CN tidak berlaku di intl, dan sebaliknya.
+
+### 8.3 Check-in harian: kenapa API key tidak bisa
+
+Endpoint `POST /billing/meter/daily-checkin` menolak API key dengan:
+
+```
+HTTP 403 {"code":403,"msg":"API key not allowed for this path or method"}
+```
+
+Klaim check-in adalah aksi **client resmi**. Client resmi mengirim
+`X-Device-Token` yang dihasilkan security SDK aplikasi; token ini tidak
+diturunkan dari API key dan tidak tersedia lewat OAuth token biasa. Proyek
+open-source yang menangani WorkBuddy/CodeBuddy (mis. `yetone/magpie`) membaca
+kasus ini sebagai `own-app`: akun valid, quota terbaca, tetapi check-in hanya
+bisa dilakukan di app resmi. Karena itu MeAI **tidak** mencoba mengakali
+endpoint ini; yang ditampilkan hanya status read-only
+(`/checkin-activity-status`) dan pengingat bahwa bonus baru datang dari klaim
+di app resmi/kampanye provider.
+
+Cookie console, API key, atau header `X-API-Key` tidak membuka klaim ini. Jangan
+memberikan cookie/device token ke layanan pihak ketiga.
+
+### 8.4 Apakah 11140 bisa diakali?
+
+Tidak. `11140` adalah account-level restriction; open-source gateway lain
+(mis. Hanawa) menandainya sebagai **hard disable** dan meminta re-login, bukan
+soft cooldown. Tidak ada header, proxy, atau urutan request yang membatalkan
+restriction. Jalur pemulihan: appeal di official client, tunggu review, atau
+gunakan akun/key lain yang tidak terkena. Ini batasan provider, bukan bug MeAI.
 
 ---
 

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import QuotaTable from "./QuotaTable";
+import { recordQuotaHistory } from "./quotaHistory";
 import Toggle from "@/shared/components/Toggle";
 import Tooltip from "@/shared/components/Tooltip";
 import {
@@ -358,6 +359,7 @@ export default function ProviderLimits() {
 
       // Parse quota data using provider-specific parser
       const parsedQuotas = parseQuotaData(provider, data);
+      const history = recordQuotaHistory(connectionId, parsedQuotas);
 
       const quotaEntry = {
         quotas: parsedQuotas,
@@ -365,6 +367,7 @@ export default function ProviderLimits() {
         message: data.message || null,
         hint: data.hint || null, // token plan: panduan cara dapat kuota riil
         checkIn: data.checkIn || null,
+        history,
         raw: data,
       };
 
@@ -1542,6 +1545,7 @@ export default function ProviderLimits() {
                 ) : (
                   <QuotaTable
                     quotas={visibleQuotas}
+                    history={quota?.history || {}}
                     compact
                     sortMode="default"
                     showSortLabel={
