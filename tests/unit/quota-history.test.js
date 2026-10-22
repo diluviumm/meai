@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   appendQuotaSample,
   forecastQuota,
+  mergeQuotaHistory,
   sparklinePoints,
 } from "../../src/app/(dashboard)/dashboard/usage/components/ProviderLimits/quotaHistory.js";
 
@@ -99,5 +100,19 @@ describe("quota history + burn-rate forecast", () => {
     ]);
     expect(points.split(" ")).toHaveLength(3);
     expect(points).toContain(",");
+  });
+
+  it("merges server rows with the local fallback, newest last", () => {
+    const merged = mergeQuotaHistory(
+      { Monthly: [{ t: 2 * HOUR, used: 20, pct: 80 }] },
+      {
+        Monthly: [
+          { t: HOUR, used: 10, pct: 90 },
+          { t: 2 * HOUR, used: 99, pct: 1 },
+        ],
+      },
+    );
+    expect(merged.Monthly.map((s) => s.t)).toEqual([HOUR, 2 * HOUR]);
+    expect(merged.Monthly[1].used).toBe(20); // server wins on the same bucket
   });
 });

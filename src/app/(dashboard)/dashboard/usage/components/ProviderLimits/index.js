@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import QuotaTable from "./QuotaTable";
-import { fetchQuotaHistory, recordQuotaHistory } from "./quotaHistory";
+import { fetchQuotaHistory, mergeQuotaHistory, recordQuotaHistory } from "./quotaHistory";
 import Toggle from "@/shared/components/Toggle";
 import Tooltip from "@/shared/components/Tooltip";
 import {
@@ -365,7 +365,9 @@ export default function ProviderLimits() {
       let history = localHistory;
       try {
         const serverHistory = await fetchQuotaHistory(connectionId);
-        if (Object.keys(serverHistory).length > 0) history = serverHistory;
+        if (Object.keys(serverHistory).length > 0) {
+          history = mergeQuotaHistory(serverHistory, localHistory);
+        }
       } catch {
         history = localHistory;
       }

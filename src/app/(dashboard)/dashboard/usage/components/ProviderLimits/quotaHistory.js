@@ -158,6 +158,27 @@ export function invalidateQuotaHistoryCache(connectionId) {
 }
 
 /**
+ * Merge server history with the local offline fallback. Server rows win when
+ * the minute bucket is identical; local rows fill gaps from before the
+ * SQLite history existed. Keeps newest `QUOTA_HISTORY_LIMIT` samples.
+ */
+export function mergeQuotaHistory(serverHistory, localHistory) {
+  const out = {};
+  const names = new Set([
+    ...Object.keys(serverHistory || {}),
+    ...Object.keys(localHistory || {}),
+  ]);
+  for (const name of names) {
+    const byTime = new Map();
+    for (const sample of cleanSamples(localHistory?.[name])) byTime.set(sample.t, sample);
+    for (const sample of cleanSamples(serverHistory?.[name])) byTime.set(sample.t, sample);
+    const merged = [...byTime.values()].sort((a, b) => a.t - b.t);
+    if (merged.length > 0) out[name] = merged.slice(-QUOTA_HISTORY_LIMIT);
+  }
+  return out;
+}
+
+/**
  * Record current quota rows and return the updated history map.
  * Call on every quota fetch; the interval guard keeps writes cheap.
  */

@@ -233,6 +233,8 @@ export default function QuotaTable({
           const isExpired = quota.expired === true;
           const isExhausted = quota.exhausted === true;
           const trendSamples = history?.[quota.name] || [];
+          const hasSparkline =
+            !isExpired && !isUnlimited && !isCreditBalance && Number(quota.total) > 0 && trendSamples.length >= 2;
           const trend =
             !isExpired && !isUnlimited && !isCreditBalance && Number(quota.total) > 0
               ? forecastQuota(quota, trendSamples)
@@ -349,14 +351,14 @@ export default function QuotaTable({
                   </span>
                 </div>
 
-                {trend && (
+                {hasSparkline && (
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <TrendSparkline samples={trendSamples} tone={trend.tone} />
+                    <TrendSparkline samples={trendSamples} tone={trend?.tone || "text-text-muted"} />
                     <span
-                      className={`shrink-0 text-[9px] font-medium leading-none ${trend.tone}`}
-                      title={trend.title}
+                      className={`shrink-0 text-[9px] font-medium leading-none ${trend?.tone || "text-text-muted"}`}
+                      title={trend?.title || "Forecast muncul setelah ≥12 menit data; sparkline sudah aktif."}
                     >
-                      {trend.short}
+                      {trend?.short || "…"}
                     </span>
                   </div>
                 )}
