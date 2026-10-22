@@ -313,7 +313,7 @@ file config mentah di log/laporan karena memuat kredensial.
 |---|---|---|
 | `400/11128` CodeBuddy Intl | Header official-client hilang/dibuang proxy | Pastikan build terbaru; cek proxy yang memodifikasi header |
 | `403/11140` CodeBuddy Intl | Akun dibatasi provider (unusual activity) | Tunggu review / appeal official client; pakai `cbcn/<model>` sementara |
-| Check-in CodeBuddy 403 | API key tidak diizinkan klaim | Status tetap terbaca; klaim hanya lewat official client/OAuth |
+| Check-in CodeBuddy 403 | API key tidak diizinkan klaim | Status tetap terbaca; klaim hanya lewat official client (X-Device-Token) |
 | `404 No active credentials` | Prefix model salah / provider belum connected | Cek `GET /v1/models`, tambah koneksi |
 | `429` | Key/model kena limit | MeAI pindah key otomatis; cek Quota Tracker |
 | `401` | Token/key expired | Reconnect / update key |
