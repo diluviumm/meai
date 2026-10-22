@@ -14,9 +14,15 @@ export default {
     website: "https://www.codebuddy.ai",
     notice: {
       signupUrl: "https://www.codebuddy.ai",
+      apiKeyUrl: "https://www.codebuddy.ai",
+      text: "Chat CodeBuddy Intl hanya menerima kredensial OAuth dari client resmi. API key masih bisa membaca quota, tetapi gateway menolak chat dengan 400/11128 (channel verification). Gunakan tombol OAuth untuk koneksi chat.",
     },
   },
   category: "oauth",
+  // OAuth first: the intl chat gateway verifies the official-client channel and
+  // rejects API-key requests with 400/11128 ("request illegal") even when the
+  // key can read quota. Keep apikey for quota/usage, but steer new connections
+  // to OAuth which is the only credential the chat endpoint accepts.
   authModes: ["oauth", "apikey"],
   hasOAuth: true,
   transport: {
@@ -26,12 +32,17 @@ export default {
     // CodeBuddy intl speaks the same unified OpenAI reasoning_effort shape as CN.
     thinkingFormat: "openai",
     headers: {
-      "User-Agent": "IDE/2.108.1 CodeBuddy/2.108.1",
+      "User-Agent": "IDE/2.172.1 CodeBuddy/2.172.1",
       "X-Product": "SaaS",
       "X-IDE-Type": "IDE",
       "X-IDE-Name": "IDE",
+      "X-IDE-Version": "2.172.1",
+      "X-Product-Version": "2.172.1",
       "x-requested-with": "XMLHttpRequest",
       "x-codebuddy-request": "1",
+      Origin: "https://www.codebuddy.ai",
+      Referer: "https://www.codebuddy.ai/",
+      "Accept-Language": "en-US",
     },
     auth: {
       combined: true,

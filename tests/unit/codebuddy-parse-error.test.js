@@ -35,6 +35,21 @@ describe("CodeBuddy parseError", () => {
     expect(parsed.resetsAtMs).toBe(expected);
   });
 
+  it("maps 11128 channel verification to an actionable OAuth message", () => {
+    const executor = new CodeBuddyIntlExecutor();
+    const bodyText = JSON.stringify({
+      code: 11128,
+      msg: "request illegal",
+      displayTips: { en: "This call failed channel verification" },
+    });
+
+    const parsed = executor.parseError({ status: 400 }, bodyText);
+    expect(parsed.status).toBe(400);
+    expect(parsed.message).toContain("11128");
+    expect(parsed.message).toMatch(/OAuth/i);
+    expect(parsed.message).not.toContain('"displayTips"');
+  });
+
   it("falls back to super.parseError for unrelated errors", () => {
     const executor = new CodeBuddyExecutor();
     const bodyText = JSON.stringify({

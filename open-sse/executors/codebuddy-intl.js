@@ -44,6 +44,19 @@ export class CodeBuddyIntlExecutor extends DefaultExecutor {
       try {
         const data = JSON.parse(bodyText);
         const msg = data?.msg || data?.message || data?.error?.message || "";
+        // 11128 on the intl gateway is a channel-verification rejection: the
+        // request looks like it did not come from an official client. For an
+        // API-key connection this is terminal (the key can read quota but not
+        // chat); OAuth is the credential the chat endpoint accepts.
+        if (data?.code === 11128) {
+          return {
+            status: 400,
+            message:
+              "CodeBuddy Intl menolak chat dengan 400/11128 (channel verification). " +
+              "API key ini valid untuk quota, tetapi tidak punya izin chat di www.codebuddy.ai. " +
+              "Hubungkan ulang provider ini lewat OAuth (Connect with OAuth), lalu gunakan koneksi OAuth tersebut.",
+          };
+        }
         if (data?.code === 6004 || /超出频率限制|frequency limit|限额/i.test(msg)) {
           let resetsAtMs = null;
           const match = msg.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})(?:\s*UTC\+?([0-9:]+))?/i);
