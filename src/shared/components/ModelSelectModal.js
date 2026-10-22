@@ -106,6 +106,7 @@ export default function ModelSelectModal({
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refresh the live provider catalog when the modal opens
     if (isOpen) fetchConnections();
   }, [isOpen]);
 
