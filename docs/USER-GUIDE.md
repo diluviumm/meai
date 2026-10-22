@@ -325,7 +325,26 @@ Untuk masalah yang menetap, salin `requestId` dari Console Log saat melapor.
 
 ---
 
-## 13. Checklist verifikasi rilis
+## 13. Update upstream: rebuild ≠ update
+
+- Tombol **Rebuild saja** hanya menjalankan `npm run build` + restart service
+  dari kode yang **sudah ada**. Itu tidak mengambil commit upstream; badge
+  “N patch upstream” akan tetap muncul.
+- Tombol **Update & Build** menjalankan `meai-upstream-apply.sh`: fetch
+  upstream, cherry-pick patch yang aman, build, restart, lalu health check.
+  Patch yang menyentuh file kustom fork ditandai review-manual dan tidak
+  dipaksa.
+- Status `done: applied=0` berarti **tidak ada commit yang diterapkan** —
+  biasanya karena yang ditekan adalah Rebuild, bukan Update.
+- Jika badge tetap muncul setelah Update, buka Console Log / status; patch
+  yang gagal akan tampil sebagai `review` atau `conflict`, bukan diterapkan
+  diam-diam.
+- Setelah semua patch diterapkan/di-whitelist dengan alasan, `/api/upstream`
+  mengembalikan `behind: 0` dan badge berubah menjadi “fork up-to-date”.
+
+---
+
+## 14. Checklist verifikasi rilis
 
 - [ ] `bash ~/.hermes/tests/meai/gate-eslint.sh` → 0 error baru
 - [ ] `bash ~/.hermes/tests/meai/gate-unit.sh` → 0 regresi baru
