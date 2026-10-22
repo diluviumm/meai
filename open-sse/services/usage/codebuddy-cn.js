@@ -277,19 +277,28 @@ async function getCodeBuddyUsage(providerId, accessToken, apiKey, providerSpecif
     const packs = accounts.map((acc) => {
       const bonus = isBonusPack(acc);
       const balance = readBalance(acc, bonus);
-      const resetAt = parseResetTime(acc.CycleEndTime);
-      // A one-shot pack can be dead for two different reasons: its window
-      // closed (time) or every credit was consumed (used == total). The UI
-      // must distinguish "expired" from "used up" or users think quota
-      // vanished while it was actually spent.
-      const usedUp = bonus && balance.total > 0 && balance.used >= balance.total - 0.01;
+      // For one-shot packs the hard expiry is ExpiredTime, which can be much
+      // earlier than CycleEndTime (campaign packs: 5-day validity but a
+      // month-long CycleEndTime). Showing CycleEndTime made already-dead
+      // packs look like they would last for weeks.
+      const resetAt = bonus
+        ? parseResetTime(acc.ExpiredTime) || parseResetTime(acc.CycleEndTime)
+        : parseResetTime(acc.CycleEndTime);
+      // A one-shot pack can be dead for two different reasons: its hard
+      // ExpiredTime window closed, or every credit was consumed while the
+      // window is still open. Status=3 + a past ExpiredTime is an expiry even
+      // when CapacityUsed is the provider's 100/100 placeholder; do not call
+      // that "used up".
+      const timeExpired = isExpiredPack(acc, resetAt, bonus);
+      const usedUp =
+        bonus && !timeExpired && balance.total > 0 && balance.used >= balance.total - 0.01;
       return {
         acc,
         bonus,
         ...balance,
         resetAt,
         resetMs: resetAt ? new Date(resetAt).getTime() : Number.POSITIVE_INFINITY,
-        expired: isExpiredPack(acc, resetAt, bonus) || usedUp,
+        expired: timeExpired || usedUp,
         exhausted: usedUp,
       };
     });

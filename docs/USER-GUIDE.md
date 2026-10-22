@@ -126,7 +126,7 @@ Payload Tencent berisi beberapa jenis paket:
 | Paket | Arti | Field yang dipakai |
 |---|---|---|
 | `Monthly` / `Weekly` / `Daily` | Allowance berulang (subscription) | `Capacity*` (atau `Cycle*` hanya untuk paket multi-cycle) |
-| `Bonus Pack N` | Kredit sekali pakai | `Capacity*`, expiry = `CycleEndTime` |
+| `Bonus Pack N` | Kredit sekali pakai | `Capacity*`, expiry = `ExpiredTime` (fallback `CycleEndTime`) |
 
 - Semua paket ditampilkan (aktif lebih dulu); paket expired diberi badge dan
   tidak dihitung dalam rata-rata sisa. Tombol `hide N expired` hanya

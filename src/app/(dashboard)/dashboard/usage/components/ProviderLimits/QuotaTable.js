@@ -292,8 +292,8 @@ export default function QuotaTable({
                   (di layar sempit lebar penuh, jadi "expires in …" tak terpotong) */}
               <div className="min-w-0 sm:w-32 sm:shrink-0">
                 {isExpired ? (
-                  <div className={`${resetPrimary} text-text-muted italic truncate`} title={resetDisplay || "Expired"}>
-                    expired{resetDisplay ? ` · ${resetDisplay}` : ""}
+                  <div className={`${resetPrimary} text-text-muted italic truncate`} title={`${isExhausted ? "Used up" : "Expired"}${resetDisplay ? ` · ${resetDisplay}` : ""}`}>
+                    {isExhausted ? "used up" : "expired"}{resetDisplay ? ` · ${resetDisplay}` : ""}
                   </div>
                 ) : countdown !== "-" || resetDisplay ? (
                   compact ? (

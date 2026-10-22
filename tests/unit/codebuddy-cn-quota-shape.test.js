@@ -145,7 +145,9 @@ describe("CodeBuddy quota balance extraction", () => {
     });
     expect(usage.quotas["Bonus Pack 1"].expired).toBe(false);
     expect(usage.quotas["Bonus Pack 2"].expired).toBe(true);
-    expect(usage.quotas["Bonus Pack 2"].exhausted).toBe(true);
+    expect(usage.quotas["Bonus Pack 2"].exhausted).toBe(false);
+    // Hard expiry is ExpiredTime (Sep 28), not the month-long CycleEndTime.
+    expect(new Date(usage.quotas["Bonus Pack 2"].resetAt).getTime()).toBeLessThan(Date.now());
     // Active pack is listed before the expired one.
     expect(Object.keys(usage.quotas).slice(0, 2)).toEqual(["Monthly", "Bonus Pack 1"]);
   });
@@ -164,7 +166,7 @@ describe("CodeBuddy quota balance extraction", () => {
     ]);
 
     const usage = await getCodeBuddyCnUsage(null, "test-key", {}, null);
-    expect(usage.quotas["Bonus Pack 1"]).toMatchObject({ used: 100, total: 100, expired: true, exhausted: true });
+    expect(usage.quotas["Bonus Pack 1"]).toMatchObject({ used: 100, total: 100, expired: true, exhausted: false });
   });
 
   it("uses Cycle* only for real multi-cycle refills", async () => {
@@ -231,6 +233,28 @@ describe("CodeBuddy quota balance extraction", () => {
       todayCheckedIn: true,
       streakDays: 9,
       dailyCredit: 100,
+    });
+  });
+
+  it("labels a future one-shot pack with all credits consumed as used up", async () => {
+    mockFetch([
+      pack({
+        Status: 0,
+        ExpiredTime: "",
+        CycleEndTime: "2026-12-01 00:00:00",
+        CapacityUsedPrecise: "100",
+        CapacityRemainPrecise: "0",
+        CycleCapacityUsedPrecise: "100",
+        CycleCapacityRemainPrecise: "0",
+      }),
+    ]);
+
+    const usage = await getCodeBuddyCnUsage(null, "api-key-used-up", {}, null);
+    expect(usage.quotas["Bonus Pack 1"]).toMatchObject({
+      used: 100,
+      total: 100,
+      expired: true,
+      exhausted: true,
     });
   });
 

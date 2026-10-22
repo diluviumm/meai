@@ -256,7 +256,7 @@ const FAQ = [
   },
   {
     q: "Kenapa Bonus Pack CodeBuddy berkurang?",
-    a: "Bonus pack adalah kredit sekali pakai. Paket lama tetap dikirim provider sampai ExpiredTime, lalu ditandai expired. MeAI sekarang menampilkan semua paket (aktif lebih dulu) agar riwayat tidak terlihat hilang. Paket baru hanya muncul bila provider menambahkannya lewat kampanye atau check-in.",
+    a: "Bonus pack adalah kredit sekali pakai. Banyak paket kampanye punya masa berlaku pendek di ExpiredTime (mis. 5 hari) meskipun CycleEndTime-nya terlihat berbulan-bulan; setelah ExpiredTime lewat, provider mengirim Status=3 dan CapacityUsed=100 sebagai penanda mati. MeAI sekarang memakai ExpiredTime sebagai expiry dan menampilkan semua paket (aktif lebih dulu), jadi riwayat tidak terlihat hilang.",
   },
   {
     q: "Bisakah check-in CodeBuddy dilakukan dengan API key?",
