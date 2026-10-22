@@ -381,7 +381,7 @@ export default function ProviderDetailPage() {
       // Load per-provider strategy override
       const override = (settingsData.providerStrategies || {})[providerId] || {};
       setProviderStrategy(override.fallbackStrategy || null);
-      setProviderStickyLimit(override.stickyRoundRobinLimit != null ? String(override.stickyRoundRobinLimit) : "1");
+      setProviderStickyLimit(override.stickyRoundRobinLimit != null ? String(override.stickyRoundRobinLimit) : "3");
       // Load per-provider thinking config
       const thinkingCfg = (settingsData.providerThinking || {})[providerId] || {};
       setThinkingMode(thinkingCfg.mode || "auto");
@@ -463,8 +463,8 @@ export default function ProviderDetailPage() {
 
   const handleRoundRobinToggle = (enabled) => {
     const strategy = enabled ? "round-robin" : null;
-    const sticky = enabled ? (providerStickyLimit || "1") : providerStickyLimit;
-    if (enabled && !providerStickyLimit) setProviderStickyLimit("1");
+    const sticky = enabled ? (providerStickyLimit || "3") : providerStickyLimit;
+    if (enabled && !providerStickyLimit) setProviderStickyLimit("3");
     setProviderStrategy(strategy);
     saveProviderStrategy(strategy, sticky);
   };
@@ -1670,7 +1670,7 @@ export default function ProviderDetailPage() {
                       min={1}
                       value={providerStickyLimit}
                       onChange={(e) => handleStickyLimitChange(e.target.value)}
-                      placeholder="1"
+                      placeholder="3"
                       className="w-14 px-2 py-1 text-xs border border-border rounded-md bg-background focus:outline-none focus:border-primary"
                     />
                   </div>
@@ -1678,6 +1678,28 @@ export default function ProviderDetailPage() {
               </div>
             </div>
           </div>
+
+          {connections.length > 1 && (
+            <details className="mb-3 rounded-lg border border-border-subtle bg-surface-2/40 px-3 py-2 text-xs text-text-muted">
+              <summary className="cursor-pointer select-none font-medium text-text-primary">
+                Cara kerja Round Robin, Sticky & fallback
+              </summary>
+              <div className="mt-2 space-y-1.5 leading-relaxed">
+                <p>
+                  <b>Round Robin</b> membagi request bergiliran ke semua koneksi aktif (key/akun).
+                  <b> Sticky</b> = jumlah request berturut-turut yang tetap dilayani key yang sama
+                  sebelum pindah ke key berikutnya (1 = pindah setiap request, 3 = 3 request per key).
+                </p>
+                <p>
+                  <b>Fallback otomatis tetap aktif di strategi mana pun.</b> Saat key kena limit
+                  (429), token mati (401), atau error 5xx, meai menandai key itu tidak tersedia
+                  untuk model tersebut lalu langsung mencoba key berikutnya. Jadi &quot;key 1 limit
+                  → key 2&quot; adalah perilaku bawaan — cukup tambahkan beberapa koneksi dan atur
+                  urutan prioritasnya.
+                </p>
+              </div>
+            </details>
+          )}
 
           {connections.length === 0 ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

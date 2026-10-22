@@ -13,6 +13,7 @@ import Modal from "./Modal";
 
 const navItems = [
   { href: "/dashboard/overview", label: "Overview", icon: "space_dashboard" },
+  { href: "/dashboard/guide", label: "Panduan", icon: "menu_book" },
   { href: "/dashboard/endpoint", label: "Endpoint & Key", icon: "api" },
   { href: "/dashboard/providers", label: "Providers", icon: "dns" },
   { href: "/dashboard/combos", label: "Combo & Vision Adapter", icon: "layers" },

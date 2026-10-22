@@ -326,7 +326,7 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
       if (proxyRes.ok) setProxyPools(proxyData.proxyPools || []);
       const override = (settingsData.providerStrategies || {})[providerId] || {};
       setProviderStrategy(override.fallbackStrategy || null);
-      setProviderStickyLimit(override.stickyRoundRobinLimit != null ? String(override.stickyRoundRobinLimit) : "1");
+      setProviderStickyLimit(override.stickyRoundRobinLimit != null ? String(override.stickyRoundRobinLimit) : "3");
     } catch (e) { console.log("ConnectionsCard fetch error:", e); }
     finally { setLoading(false); }
   }, [providerId]);
@@ -447,8 +447,8 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
               onChange={(enabled) => {
                 const strategy = enabled ? "round-robin" : null;
                 setProviderStrategy(strategy);
-                if (enabled && !providerStickyLimit) setProviderStickyLimit("1");
-                saveStrategy(strategy, enabled ? (providerStickyLimit || "1") : providerStickyLimit);
+                if (enabled && !providerStickyLimit) setProviderStickyLimit("3");
+                saveStrategy(strategy, enabled ? (providerStickyLimit || "3") : providerStickyLimit);
               }}
             />
             {providerStrategy === "round-robin" && (
@@ -463,6 +463,30 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
             )}
           </div>
         </div>
+
+        {connections.length > 1 && (
+          <details className="mb-3 rounded-lg border border-border-subtle bg-surface-2/40 px-3 py-2 text-xs text-text-muted">
+            <summary className="cursor-pointer select-none font-medium text-text-primary">
+              Cara kerja Round Robin, Sticky & fallback
+            </summary>
+            <div className="mt-2 space-y-1.5 leading-relaxed">
+              <p>
+                <b>Round Robin</b> membagi request bergiliran ke semua koneksi aktif (key/akun)
+                agar beban tidak menumpuk di satu key. <b>Sticky</b> = jumlah request
+                berturut-turut yang tetap dilayani key yang sama sebelum pindah ke key berikutnya.
+                Sticky 1 = pindah setiap request; Sticky 3 = 3 request per key.
+              </p>
+              <p>
+                <b>Fallback otomatis tetap aktif di strategi mana pun.</b> Saat key sedang
+                dipakai lalu kena limit (429), token mati (401), atau error 5xx, meai menandai
+                key itu tidak tersedia untuk model tersebut lalu langsung mencoba key berikutnya.
+                Jadi tidak perlu menyalakan Round Robin untuk mendapatkan perilaku
+                &quot;key 1 limit → key 2&quot; — cukup tambahkan beberapa koneksi dengan
+                urutan prioritas yang diinginkan.
+              </p>
+            </div>
+          </details>
+        )}
 
         {sel.size > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-3 px-2 py-1.5 rounded-lg border border-border bg-sidebar text-sm">
