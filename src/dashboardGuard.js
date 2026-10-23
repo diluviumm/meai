@@ -229,6 +229,12 @@ export async function proxy(request) {
     return NextResponse.json({ error: "API key required for remote API access" }, { status: 401 });
   }
 
+  // Read-only tenant analytics: a valid Bearer API key may read its own rows.
+  if (pathname === "/api/insights" && /^Bearer\s+/i.test(request.headers.get("authorization") || "")) {
+    if (await hasValidCliToken(request) || await canAccessPublicLlmApi(request)) return NextResponse.next();
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Deny-by-default for /api/* — public allow-list bypasses, everything else requires auth.
   if (pathname.startsWith("/api/")) {
     if (isPublicApi(pathname)) return NextResponse.next();
