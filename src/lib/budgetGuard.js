@@ -17,6 +17,11 @@ export async function checkApiKeyBudget(apiKey, settings) {
   } catch { /* key lookup is advisory */ }
   if (!keyName) return { blocked: false };
 
+  // Never let a test budget lock the operator's primary keys. These are the
+  // keys Hermes/agent tooling uses; add more via settings.budgetExemptKeys.
+  const exempt = new Set(["me", "mael-terminal", ...(Array.isArray(settings?.budgetExemptKeys) ? settings.budgetExemptKeys : [])]);
+  if (exempt.has(keyName)) return { blocked: false, keyName, exempt: true };
+
   const budget = Number(budgets[keyName] || budgets[apiKey] || 0);
   if (!Number.isFinite(budget) || budget <= 0) return { blocked: false };
   const spend = await getApiKeyCostToday(apiKey);
