@@ -302,6 +302,19 @@ Buka `/dashboard/governance` untuk 12 pemeriksaan operasional:
 
 Snapshot config tidak mengubah settings; ia hanya menulis `~/.meai/settings-snapshot.json` sebagai baseline drift.
 
+### 7.12 Phase 1 analytics (live)
+
+- **3D Orbital Health** — Canvas 3D projection; orb size = request, color = health score; animasi menghormati `prefers-reduced-motion`.
+- **Weekday cost forecast** — rata-rata biaya per hari dari usage 28 hari.
+- **Prompt-cache hygiene** — cache rate per model; peringatan bila <20%.
+- **Latency heatmap per model · connection** — p95 dan jumlah request per jam.
+- **SLO incident timeline** — jam mulai/selesai, durasi, p95 maksimum.
+- **Timeout advisor** — rekomendasi `p95 × 1.5`, clamp 15–120 detik.
+- **Settings audit** — perubahan setting dicatat di `~/.meai/settings-audit.jsonl`; nilai sensitif di-redact.
+- **Backup restore-point check** — tombol `check` memeriksa integrity dan jumlah tabel backup.
+- **OpenAPI contract** — spec bersama `src/lib/openapiSpec.js`, diuji oleh `openapi-contract.test.js`.
+- **Webhook test** — hanya HTTPS; tombol Test webhook aktif bila `alertWebhookUrl` diset.
+
 ---
 
 ## 8. CodeBuddy Intl: 11128 vs 11140
