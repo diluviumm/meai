@@ -19,6 +19,7 @@ const navItems = [
   { href: "/dashboard/combos", label: "Combo & Vision Adapter", icon: "layers" },
   // { href: "/dashboard/basic-chat", label: "Basic Chat", icon: "chat" }, // Hidden
   { href: "/dashboard/usage", label: "Usage", icon: "bar_chart" },
+  { href: "/dashboard/insights", label: "Insights & Health", icon: "monitoring" },
   { href: "/dashboard/quota", label: "Quota Tracker", icon: "data_usage" },
   { href: "/dashboard/cli-tools", label: "CLI Tools", icon: "terminal" },
 ];
@@ -131,7 +132,7 @@ export default function Sidebar({ onClose }) {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
             <span className="relative inline-flex size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.8)]" />
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300/90">Gateway Live</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-200">Gateway Live</span>
         </div>
 
         {/* Logo */}

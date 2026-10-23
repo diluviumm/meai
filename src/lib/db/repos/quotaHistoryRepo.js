@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { getAdapter } from "../driver.js";
 
 export const QUOTA_HISTORY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -15,6 +18,7 @@ export const QUOTA_HISTORY_DEFAULT_HOURS = 24;
 export const QUOTA_HISTORY_DEFAULT_LIMIT = 240;
 
 let lastPruneAt = 0;
+let lastCompactAt = 0;
 
 function finiteNumber(value) {
   const n = Number(value);
@@ -83,7 +87,67 @@ export async function recordQuotaSnapshot(connectionId, quotas, now = Date.now()
     }
   });
 
+  // Hourly compaction runs after the write transaction: keep one sample per
+  // quota per hour for data older than 24h, while recent data stays per-minute.
+  if (process.env.MEAI_QUOTA_COMPACTION !== "0" && now - lastCompactAt >= 60 * 60 * 1000) {
+    lastCompactAt = now;
+    compactQuotaHistory(now).catch((error) => console.warn("[quotaHistory] compaction skipped:", error.message));
+  }
+
   return inserted;
+}
+
+/**
+ * Compact old samples: one row per connection/quota/hour older than 24h.
+ * Recent samples stay untouched so the sparkline and anomaly detector retain
+ * their minute-level resolution. Returns a machine-readable summary.
+ */
+export async function compactQuotaHistory(now = Date.now()) {
+  const db = await getAdapter();
+  const cutoff = now - 24 * 60 * 60 * 1000;
+  const rows = db.all(
+    `SELECT connectionId, quotaName, sampledAt, used, total, pct
+       FROM quotaHistory WHERE sampledAt < ? ORDER BY sampledAt ASC`,
+    [cutoff],
+  );
+  if (!rows.length) {
+    writeCompactionStatus({ ts: now, before: 0, after: 0, removed: 0, compacted: true });
+    return { before: 0, after: 0, removed: 0 };
+  }
+
+  const keep = new Map();
+  for (const row of rows) {
+    const hour = Math.floor(row.sampledAt / 3_600_000);
+    const key = `${row.connectionId}|${row.quotaName}|${hour}`;
+    const previous = keep.get(key);
+    if (!previous || row.sampledAt > previous.sampledAt) keep.set(key, row);
+  }
+
+  db.transaction(() => {
+    db.run(`DELETE FROM quotaHistory WHERE sampledAt < ?`, [cutoff]);
+    for (const row of keep.values()) {
+      db.run(
+        `INSERT OR IGNORE INTO quotaHistory(connectionId, quotaName, sampledAt, used, total, pct)
+         VALUES(?, ?, ?, ?, ?, ?)`,
+        [row.connectionId, row.quotaName, row.sampledAt, row.used, row.total, row.pct],
+      );
+    }
+    db.run(`DELETE FROM quotaHistory WHERE sampledAt < ?`, [now - quotaHistoryRetentionMs()]);
+  });
+
+  const summary = { before: rows.length, after: keep.size, removed: rows.length - keep.size, compacted: true };
+  writeCompactionStatus({ ts: now, ...summary });
+  return summary;
+}
+
+function writeCompactionStatus(summary) {
+  try {
+    const dir = path.join(os.homedir(), ".meai");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, "quota-compaction.json"), JSON.stringify(summary));
+  } catch {
+    /* status file is advisory; compaction already succeeded */
+  }
 }
 
 function downsample(series, limit) {

@@ -37,6 +37,27 @@ describe("quotaHistory SQLite repo", () => {
     else process.env.MEAI_QUOTA_HISTORY_RETENTION_DAYS = previous;
   });
 
+  it("compacts samples older than 24h to one row per quota per hour", async () => {
+    const previous = process.env.MEAI_QUOTA_COMPACTION;
+    process.env.MEAI_QUOTA_COMPACTION = "0";
+    const { recordQuotaSnapshot, compactQuotaHistory, getQuotaHistory } = await import(
+      "@/lib/db/repos/quotaHistoryRepo.js"
+    );
+    const now = Date.now();
+    const start = now - 3 * 24 * 60 * 60 * 1000;
+    for (let i = 0; i < 24; i += 1) {
+      await recordQuotaSnapshot("conn-old", { Monthly: { used: i, total: 100 } }, start + i * 30 * 60 * 1000);
+    }
+    const before = await getQuotaHistory("conn-old", { hours: 168, limit: 500 });
+    expect(before.Monthly.length).toBeGreaterThan(6);
+    const summary = await compactQuotaHistory(now);
+    expect(summary.removed).toBeGreaterThan(0);
+    const after = await getQuotaHistory("conn-old", { hours: 168, limit: 500 });
+    expect(after.Monthly.length).toBeLessThan(before.Monthly.length);
+    if (previous === undefined) delete process.env.MEAI_QUOTA_COMPACTION;
+    else process.env.MEAI_QUOTA_COMPACTION = previous;
+  });
+
   it("records one row per quota per minute and reads it back", async () => {
     const { recordQuotaSnapshot, getQuotaHistory } = await import(
       "@/lib/db/repos/quotaHistoryRepo.js"

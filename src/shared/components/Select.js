@@ -29,6 +29,7 @@ export default function Select({
           value={value}
           onChange={onChange}
           disabled={disabled}
+          aria-label={props["aria-label"] || (typeof label === "string" ? label : placeholder) || "Select"}
           className={cn(
             "w-full py-2.5 px-3 pr-10 text-sm text-text-main",
             "bg-surface-2 border border-transparent rounded-[10px] appearance-none",

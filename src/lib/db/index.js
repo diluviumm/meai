@@ -69,9 +69,12 @@ export {
 
 // Quota history (server-side, cross-device sparkline + burn-rate)
 export {
-  recordQuotaSnapshot, getQuotaHistory, clearQuotaHistory,
+  recordQuotaSnapshot, getQuotaHistory, clearQuotaHistory, compactQuotaHistory,
   normalizeQuotaRows, QUOTA_HISTORY_RETENTION_MS,
 } from "./repos/quotaHistoryRepo.js";
+
+// Insights (leaderboard, health score, anomaly, rate-limit heatmap)
+export { getInsights } from "./repos/insightsRepo.js";
 
 // Export/import full DB
 export async function exportDb() {

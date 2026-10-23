@@ -37,6 +37,7 @@ export default function Input({
           value={value}
           onChange={onChange}
           disabled={disabled}
+          aria-label={props["aria-label"] || (typeof label === "string" ? label : placeholder) || "Input"}
           className={cn(
             "w-full py-2.5 px-3 text-sm text-text-main bg-surface-2 rounded-[10px]",
             "border border-transparent placeholder-text-muted/70",

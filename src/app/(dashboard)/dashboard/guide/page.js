@@ -218,6 +218,23 @@ const FEATURES = [
   },
 
   {
+    id: "insights",
+    category: "monitor",
+    icon: "monitoring",
+    title: "Insights & Health",
+    summary:
+      "Health score per koneksi, leaderboard latency/biaya/cache, anomaly burn, rate-limit heatmap, status automation, quiet hours, dan combo simulator.",
+    steps: [
+      "Buka Insights & Health dari sidebar.",
+      "Baca health score 0–100 (success, 429, p95) dan leaderboard model: cost/1k serta cache hit.",
+      "Lihat heatmap 429 per API key/jam; sel merah = rasio rate-limit tinggi.",
+      "Atur quiet hours agar alert budget tidak dikirim pada jam tertentu.",
+      "Pilih combo lalu Simulasikan untuk melihat urutan fallback, health score, dan compatibility tanpa request ke provider.",
+    ],
+    tip: "Health score bersifat advisory; routing aktual tetap mengikuti urutan combo. Status automation dibaca dari file state nyata (compaction, restore drill, catalog diff, WCAG), bukan dummy.",
+    href: "/dashboard/insights",
+  },
+  {
     id: "cli-tools",
     category: "integrasi",
     icon: "terminal",

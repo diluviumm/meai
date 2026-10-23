@@ -1596,7 +1596,7 @@ export default function ProviderLimits() {
                       </span>
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-text-muted">
-                      <span className="flex items-center gap-0.5" aria-label="7 hari terakhir">
+                      <span role="img" className="flex items-center gap-0.5" aria-label="7 hari terakhir">
                         {(quota.checkIn.weekProgress?.length
                           ? quota.checkIn.weekProgress
                           : [false, false, false, false, false, false, false]
