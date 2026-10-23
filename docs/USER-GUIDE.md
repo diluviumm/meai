@@ -310,6 +310,7 @@ Buka `/dashboard/billing/invoice`:
 - Nilai utama memakai **IDR** dengan kurs `usdToIdr` (default 16.000); USD tetap ditampilkan sebagai referensi.
 - `invoiceTaxPct` default **0%**; dokumen berlabel **bukan faktur pajak resmi**.
 - **Download PDF** menghasilkan PDF A4 berisi nomor, tanggal WITA, rincian per API key, total, dan catatan.
+- **Pengaturan invoice** di bagian bawah halaman: kurs `usdToIdr` dan PPN `invoiceTaxPct`; disimpan lewat settings dan langsung dipakai PDF berikutnya.
 - Label biaya diatur di **Governance → Cost allocation**; label yang sama dipakai di PDF.
 - `GET /api/billing/invoice?period=30d&format=json` untuk data mentah; tanpa `format=json` mengembalikan PDF.
 
