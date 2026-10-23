@@ -46,6 +46,7 @@ export default function InsightsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("cost");
+  const [columns, setColumns] = useState({ model: true, requests: true, success: true, p95: true, cost: true, cache: true });
   const [savedViews, setSavedViews] = useState([]);
   const [alertHistory, setAlertHistory] = useState([]);
 
@@ -254,7 +255,7 @@ export default function InsightsPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="sticky top-0 z-20 -mx-3 grid grid-cols-2 gap-2 border-b border-border/50 bg-bg/90 px-3 py-2 backdrop-blur sm:-mx-4 sm:px-4 sm:grid-cols-4">
         <Kpi label="Requests" value={fmtInt(data.totals.requests)} hint={`usageHistory ${data.windowHours} jam`} />
         <Kpi label="Success" value={pct(data.totals.successRate)} hint="2xx–3xx" tone="text-emerald-600 dark:text-emerald-400" />
         <Kpi label="Cache hit" value={pct(cacheRate)} hint="cached / prompt token" tone="text-primary" />
@@ -295,6 +296,19 @@ export default function InsightsPage() {
         </Card>
       </div>
 
+      <Card className="flex min-w-0 flex-col gap-2 p-3 sm:p-4">
+        <h2 className="text-sm font-semibold text-text-main">Provider status timeline</h2>
+        <div className="overflow-x-auto" tabIndex={0} aria-label="Timeline provider per jam">
+          <div className="min-w-[480px] space-y-1">
+            {data.providerTimeline.map((row) => (
+              <div key={row.provider} className="grid grid-cols-[110px_repeat(24,minmax(0,1fr))] items-center gap-0.5">
+                <span className="truncate pr-1 text-[10px] text-text-muted" title={row.provider}>{row.provider}</span>
+                {row.cells.map((cell, hour) => <span key={hour} className="h-3 rounded-[2px]" style={{ backgroundColor: cell.requests ? `rgba(16,185,129,${0.12 + Math.min(1, cell.rate429 / Math.max(1, cell.requests)) * 0.7})` : "rgba(148,148,159,.08)" }} title={`${row.provider} ${hour}:00 — ${cell.requests} req · ${cell.rate429} × 429 · $${cell.cost.toFixed(4)}`} />)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
 
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
@@ -400,22 +414,30 @@ export default function InsightsPage() {
               <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Urutkan leaderboard" className="h-7 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main">
                 <option value="cost">Cost</option><option value="requests">Req</option><option value="p95">p95</option><option value="success">Success</option>
               </select>
+              <details className="relative">
+                <summary className="cursor-pointer rounded-md border border-border bg-surface px-2 py-1 text-[10px] text-text-muted">Columns</summary>
+                <div className="absolute right-0 z-30 mt-1 grid grid-cols-2 gap-1 rounded-lg border border-border bg-surface p-2 text-[10px] shadow-xl">
+                  {[["model", "Model"], ["requests", "Req"], ["success", "Success"], ["p95", "p95"], ["cost", "Cost"], ["cache", "Cache"]].map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-1 whitespace-nowrap"><input type="checkbox" checked={columns[key]} onChange={() => setColumns((prev) => ({ ...prev, [key]: !prev[key] }))} /> {label}</label>
+                  ))}
+                </div>
+              </details>
             </div>
           </div>
           <div className="overflow-x-auto" tabIndex={0} aria-label="Tabel leaderboard model">
             <table className="w-full min-w-[620px] text-left text-[11px]">
               <thead className="text-[10px] uppercase tracking-wide text-text-muted">
-                <tr><th className="py-1.5 pr-2">Model</th><th className="pr-2">Req</th><th className="pr-2">Success</th><th className="pr-2">p95</th><th className="pr-2">Cost/1k</th><th>Cache</th></tr>
+                <tr><th className={columns.model ? "" : "hidden"}>Model</th><th className={columns.requests ? "pr-2" : "hidden"}>Req</th><th className={columns.success ? "pr-2" : "hidden"}>Success</th><th className={columns.p95 ? "pr-2" : "hidden"}>p95</th><th className={columns.cost ? "pr-2" : "hidden"}>Cost/1k</th><th className={columns.cache ? "" : "hidden"}>Cache</th></tr>
               </thead>
               <tbody>
                 {visibleLeaderboard.map((row) => (
                   <tr key={row.model} className="border-t border-border/50">
-                    <td className="max-w-[220px] truncate py-1.5 pr-2 font-medium text-text-main" title={row.model}>{row.model}</td>
-                    <td className="pr-2 text-text-muted">{fmtInt(row.requests)}</td>
-                    <td className={`pr-2 ${row.successRate >= 0.95 ? "text-emerald-500" : "text-amber-500"}`}>{pct(row.successRate)}</td>
-                    <td className="pr-2 text-text-muted">{fmtMs(row.p95)}</td>
-                    <td className="pr-2 text-text-main">{row.costPer1k == null ? "—" : fmtUsd(row.costPer1k)}</td>
-                    <td className="text-text-muted">{pct(row.cacheHitRate)}</td>
+                    <td className={`${columns.model ? "" : "hidden"} max-w-[220px] truncate py-1.5 pr-2 font-medium text-text-main`} title={row.model}>{row.model}</td>
+                    <td className={`${columns.requests ? "pr-2" : "hidden"} text-text-muted`}>{fmtInt(row.requests)}</td>
+                    <td className={`${columns.success ? "pr-2" : "hidden"} ${row.successRate >= 0.95 ? "text-emerald-500" : "text-amber-500"}`}>{pct(row.successRate)}</td>
+                    <td className={`${columns.p95 ? "pr-2" : "hidden"} text-text-muted`}>{fmtMs(row.p95)}</td>
+                    <td className={`${columns.cost ? "pr-2" : "hidden"} text-text-main`}>{row.costPer1k == null ? "—" : fmtUsd(row.costPer1k)}</td>
+                    <td className={columns.cache ? "text-text-muted" : "hidden"}>{pct(row.cacheHitRate)}</td>
                   </tr>
                 ))}
               </tbody>
