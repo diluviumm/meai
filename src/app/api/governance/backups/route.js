@@ -28,7 +28,7 @@ export async function POST(request) {
   try {
     const { name } = await request.json();
     const safeName = path.basename(String(name || ""));
-    if (!/^data.*\.(sqlite|bak)$/.test(safeName) || safeName !== name) {
+    if (!/^data.*\.(sqlite|bak)(?:[._-].*)?$/.test(safeName) || safeName !== name) {
       return NextResponse.json({ error: "Nama backup tidak valid" }, { status: 400 });
     }
     const file = path.join(DB_DIR, safeName);
