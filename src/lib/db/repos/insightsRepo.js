@@ -6,6 +6,8 @@ import { parseJson } from "../helpers/jsonCol.js";
 import { getProviderConnections } from "./connectionsRepo.js";
 import { getApiKeys } from "./apiKeysRepo.js";
 import { getSettings } from "./settingsRepo.js";
+import { getUsageStats } from "./usageRepo.js";
+import { getPricingForModel } from "./pricingRepo.js";
 
 const WINDOW_HOURS = 24;
 const MASK = (value) => {
@@ -91,6 +93,7 @@ export async function getInsights({ hours = WINDOW_HOURS } = {}) {
   const byModel = {};
   const byKey = {};
   const byKeyHour = {};
+  const byKeyHourly = {};
   const hourly = {};
   const nowHour = Math.floor(Date.now() / 3_600_000);
 
@@ -133,10 +136,15 @@ export async function getInsights({ hours = WINDOW_HOURS } = {}) {
     const hourKey = Math.floor(new Date(row.timestamp).getTime() / 3_600_000);
     if (!hourly[hourKey]) hourly[hourKey] = 0;
     hourly[hourKey] += cost;
+    if (!byKeyHourly[keyLabel]) byKeyHourly[keyLabel] = {};
+    byKeyHourly[keyLabel][hourKey] = (byKeyHourly[keyLabel][hourKey] || 0) + cost;
   }
 
   const connectionRows = Object.entries(byConnection)
-    .map(([id, bucket]) => ({ id, name: connectionNames[id] || `Account ${id.slice(0, 8)}`, ...finishBucket(bucket) }))
+    .map(([id, bucket]) => {
+      const connection = connections.find((c) => c.id === id);
+      return { id, name: connectionNames[id] || `Account ${id.slice(0, 8)}`, provider: connection?.provider || "unknown", ...finishBucket(bucket) };
+    })
     .sort((a, b) => (b.requests - a.requests) || (b.cost - a.cost));
 
   const leaderboard = Object.entries(byModel)
@@ -158,13 +166,107 @@ export async function getInsights({ hours = WINDOW_HOURS } = {}) {
     flagged: baseline > 0 && currentHour > baseline * 1.8,
   };
 
-  const quotaStats = db.get(
-    `SELECT COUNT(*) AS rows, MIN(sampledAt) AS oldest, MAX(sampledAt) AS newest FROM quotaHistory`,
-  ) || {};
+  const settings = await getSettings();
+  const today = await getUsageStats("today").catch(() => null);
+  const now = new Date();
+  const elapsedFraction = Math.max(0.01, (now.getHours() * 60 + now.getMinutes()) / 1440);
+  const dailyBudget = Number(settings.costBudgetDaily) || 0;
+  const pacing = {
+    spendToday: Number(today?.totalCost || 0),
+    budget: dailyBudget,
+    elapsedFraction: Number(elapsedFraction.toFixed(3)),
+    projectedEndOfDay: Number(((today?.totalCost || 0) / elapsedFraction).toFixed(4)),
+    status: !dailyBudget ? "no-budget" : (today?.totalCost || 0) > dailyBudget ? "over" : ((today?.totalCost || 0) / elapsedFraction) > dailyBudget ? "pacing-over" : "ok",
+  };
+
+  const fairnessValues = connectionRows.map((row) => row.requests).filter((n) => n > 0);
+  const mean = fairnessValues.length ? fairnessValues.reduce((a, b) => a + b, 0) / fairnessValues.length : 0;
+  const variance = fairnessValues.length ? fairnessValues.reduce((a, b) => a + (b - mean) ** 2, 0) / fairnessValues.length : 0;
+  const fairness = {
+    score: mean ? Math.round(Math.max(0, 100 - (Math.sqrt(variance) / mean) * 100)) : null,
+    spread: mean ? Number((Math.sqrt(variance) / mean).toFixed(2)) : null,
+    connections: connectionRows.map((row) => ({ id: row.id, name: row.name, requests: row.requests })),
+  };
+
+  const quotaRows = db.all(
+    `SELECT connectionId, quotaName, sampledAt, used, total, pct
+       FROM quotaHistory ORDER BY sampledAt DESC LIMIT 4000`,
+  );
+  const quotaSeries = {};
+  for (const row of quotaRows) {
+    const key = `${row.connectionId}|${row.quotaName}`;
+    if (!quotaSeries[key]) quotaSeries[key] = [];
+    if (quotaSeries[key].length < 2 && !quotaSeries[key].some((r) => r.sampledAt === row.sampledAt)) quotaSeries[key].push(row);
+  }
+  const expiry = Object.values(quotaSeries).map((series) => {
+    const [latest, previous] = series;
+    if (!latest || latest.total <= 0 || latest.pct <= 0) return null;
+    const hours = previous ? (latest.sampledAt - previous.sampledAt) / 3_600_000 : 0;
+    const usedPerHour = previous && hours > 0 ? (latest.used - previous.used) / hours : 0;
+    const daysLeft = usedPerHour > 0 ? (latest.total - latest.used) / usedPerHour / 24 : null;
+    if (daysLeft == null || daysLeft > 30) return null;
+    return {
+      connectionId: latest.connectionId,
+      name: connectionNames[latest.connectionId] || `Account ${latest.connectionId.slice(0, 8)}`,
+      quotaName: latest.quotaName,
+      pct: Number(latest.pct.toFixed(1)),
+      daysLeft: Number(daysLeft.toFixed(1)),
+      flagged: daysLeft <= 3,
+    };
+  }).filter(Boolean).sort((a, b) => a.daysLeft - b.daysLeft).slice(0, 8);
+
+  const perKeyAnomaly = Object.entries(byKeyHourly).map(([name, buckets]) => {
+    const current = buckets[nowHour] || 0;
+    const previous = Object.entries(buckets).filter(([h]) => Number(h) < nowHour && Number(h) >= nowHour - 6).map(([, v]) => v);
+    const base = previous.length ? previous.reduce((a, b) => a + b, 0) / previous.length : 0;
+    return { name, current, baseline: Number(base.toFixed(6)), ratio: base > 0 ? Number((current / base).toFixed(2)) : null, flagged: base > 0 && current > base * 1.8 };
+  }).filter((row) => row.flagged || row.ratio >= 1.5).sort((a, b) => (b.ratio || 0) - (a.ratio || 0)).slice(0, 8);
+
+  const sloP95Ms = Number(settings.sloP95Ms) || 30_000;
+  const sloSuccessRate = Number(settings.sloSuccessRate) || 0.99;
+  const slo = {
+    p95Ms: sloP95Ms,
+    successRate: sloSuccessRate,
+    breaches: connectionRows.filter((row) => (row.p95 != null && row.p95 > sloP95Ms) || row.successRate < sloSuccessRate).map((row) => ({ id: row.id, name: row.name, p95: row.p95, successRate: row.successRate })),
+  };
+
+  const pricingAudit = [];
+  for (const row of leaderboard.slice(0, 8)) {
+    const match = row.model.match(/^(.*?)\s+\(([^)]*)\)$/);
+    if (!match) continue;
+    const [, rawModel, provider] = match;
+    const pricing = await getPricingForModel(provider, rawModel).catch(() => null);
+    if (!pricing) continue;
+    const expected = (row.promptTokens / 1e6) * (Number(pricing.input) || 0) + (row.completionTokens / 1e6) * (Number(pricing.output) || 0);
+    if (expected <= 0) continue;
+    const deltaPct = ((row.cost - expected) / expected) * 100;
+    if (Math.abs(deltaPct) >= 20) pricingAudit.push({ model: row.model, provider, actual: row.cost, expected: Number(expected.toFixed(6)), deltaPct: Number(deltaPct.toFixed(1)) });
+  }
+
+  let dbBytes = null;
+  try {
+    const pages = db.get(`PRAGMA page_count`);
+    const pageSize = db.get(`PRAGMA page_size`);
+    dbBytes = (Number(pages?.page_count) || 0) * (Number(pageSize?.page_size) || 0);
+  } catch { /* adapter may not expose PRAGMA rows */ }
 
   const readStatusFile = (name) => {
     try { return JSON.parse(fs.readFileSync(path.join(os.homedir(), ".meai", name), "utf8")); } catch { return null; }
   };
+
+  const notifications = [];
+  if (anomaly.flagged) notifications.push({ level: "warning", text: `Burn ${anomaly.ratio}× baseline` });
+  for (const row of expiry.filter((r) => r.flagged)) notifications.push({ level: "warning", text: `${row.name} ${row.quotaName}: ${row.daysLeft}d left` });
+  const a11y = readStatusFile("a11y-report.json");
+  if (a11y?.critical > 0) notifications.push({ level: "error", text: `${a11y.critical} WCAG critical` });
+  const restore = readStatusFile("restore-drill.json");
+  if (restore && !restore.ok) notifications.push({ level: "error", text: "Restore drill failed" });
+  const catalog = readStatusFile("catalog-diff.json");
+  if (catalog && (catalog.added?.length || catalog.removed?.length)) notifications.push({ level: "info", text: `Catalog +${catalog.added?.length || 0}/−${catalog.removed?.length || 0}` });
+
+  const quotaStats = db.get(
+    `SELECT COUNT(*) AS rows, MIN(sampledAt) AS oldest, MAX(sampledAt) AS newest FROM quotaHistory`,
+  ) || {};
 
   return {
     generatedAt: new Date().toISOString(),
@@ -180,6 +282,15 @@ export async function getInsights({ hours = WINDOW_HOURS } = {}) {
     keys: Object.entries(byKey).map(([name, bucket]) => ({ name, ...finishBucket(bucket) })).sort((a, b) => b.requests - a.requests),
     heatmap: Object.entries(byKeyHour).map(([name, cells]) => ({ name, cells })),
     anomaly,
+    pacing,
+    fairness,
+    expiry,
+    perKeyAnomaly,
+    slo,
+    pricingAudit,
+    notifications,
+    db: { bytes: dbBytes },
+    providerMatrix: connectionRows.map((row) => ({ provider: row.provider, name: row.name, score: row.score, requests: row.requests, rate429: row.rate429, p95: row.p95 })),
     quotaHistory: { rows: quotaStats.rows || 0, oldest: quotaStats.oldest || null, newest: quotaStats.newest || null },
     ops: {
       compaction: readStatusFile("quota-compaction.json"),
@@ -188,7 +299,7 @@ export async function getInsights({ hours = WINDOW_HOURS } = {}) {
       a11y: readStatusFile("a11y-report.json"),
     },
     settings: {
-      quietHours: (await getSettings()).alertQuietHours || null,
+      quietHours: settings.alertQuietHours || null,
     },
   };
 }

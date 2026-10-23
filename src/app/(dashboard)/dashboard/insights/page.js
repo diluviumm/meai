@@ -38,6 +38,8 @@ export default function InsightsPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [quiet, setQuiet] = useState({ enabled: false, start: "22:00", end: "07:00" });
+  const [live, setLive] = useState(false);
+  const [ticks, setTicks] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -53,6 +55,14 @@ export default function InsightsPage() {
       setComboName((current) => current || list[0]?.name || "");
     }).catch((err) => alive && setError(err.message)).finally(() => alive && setLoading(false));
     return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    const source = new EventSource("/api/events/stream");
+    source.onopen = () => setLive(true);
+    source.onmessage = () => setTicks((value) => value + 1);
+    source.onerror = () => setLive(false);
+    return () => source.close();
   }, []);
 
   const topConnection = useMemo(() => data?.connections?.[0] || null, [data]);
@@ -90,6 +100,17 @@ export default function InsightsPage() {
     }
   };
 
+  const exportInsights = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `meai-insights-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setNotice("Snapshot insights diexport sebagai JSON.");
+  };
+
   if (loading) return <div className="p-4"><div className="h-64 animate-pulse rounded-2xl bg-surface-2" /></div>;
   if (error) return <div className="p-4"><Card className="border-danger/30 bg-danger/10 p-4 text-sm text-danger">Gagal memuat insights: {error}</Card></div>;
 
@@ -101,6 +122,10 @@ export default function InsightsPage() {
           <p className="mt-0.5 text-xs text-text-muted">Health score, leaderboard latency/biaya, anomali burn, cache, rate-limit heatmap, dan ops otomatis.</p>
         </div>
         <div className="flex items-center gap-2">
+          <span className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] ${live ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-border bg-surface text-text-muted"}`}>
+            <span className={`size-1.5 rounded-full ${live ? "bg-emerald-500" : "bg-text-muted"}`} /> {live ? "LIVE" : "offline"} · {ticks}
+          </span>
+          <button type="button" onClick={exportInsights} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Export JSON</button>
           <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted">{data.windowHours} jam terakhir</span>
           <a href="/api/openapi" target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-primary hover:underline">OpenAPI</a>
         </div>
@@ -157,6 +182,57 @@ export default function InsightsPage() {
           <p className="text-[10px] text-text-muted">Top spender: {topConnection ? `${topConnection.name} · ${fmtUsd(topConnection.cost)}` : "—"}</p>
         </Card>
       </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <Card className="flex flex-col gap-3 p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-text-main">Forecast & SLO</h2>
+            <span className="text-[10px] text-text-muted">pacing hari ini</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Kpi label="Spend hari ini" value={fmtUsd(data.pacing.spendToday)} hint={data.pacing.budget ? `budget ${fmtUsd(data.pacing.budget)}` : "global budget belum diset"} />
+            <Kpi label="Projected akhir hari" value={fmtUsd(data.pacing.projectedEndOfDay)} hint={`${(data.pacing.elapsedFraction * 100).toFixed(0)}% hari berjalan`} tone={data.pacing.status === "over" || data.pacing.status === "pacing-over" ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
+            <Kpi label="SLO p95" value={fmtMs(data.slo.p95Ms)} hint={`${data.slo.breaches.length} koneksi breach`} tone={data.slo.breaches.length ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
+            <Kpi label="Fairness" value={data.fairness.score == null ? "—" : `${data.fairness.score}/100`} hint={`spread ${data.fairness.spread ?? "—"}`} />
+          </div>
+          <div className="flex flex-wrap gap-2 text-[10px] text-text-muted">
+            <span className="rounded-full border border-border/60 px-2 py-0.5">DB {data.db?.bytes ? `${(data.db.bytes / 1024 / 1024).toFixed(1)} MB` : "—"}</span>
+            <span className="rounded-full border border-border/60 px-2 py-0.5">{data.providerMatrix.length} provider</span>
+            <span className="rounded-full border border-border/60 px-2 py-0.5">{data.notifications.length} notifikasi</span>
+          </div>
+        </Card>
+
+        <Card className="flex min-w-0 flex-col gap-3 p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-text-main">Quota expiry forecast</h2>
+            <span className="text-[10px] text-text-muted">≤3d merah</span>
+          </div>
+          {data.expiry.length === 0 ? <p className="text-xs text-text-muted">Belum ada kuota yang diproyeksikan habis ≤30 hari.</p> : (
+            <div className="overflow-x-auto" tabIndex={0} aria-label="Forecast expiry kuota">
+              <table className="w-full min-w-[420px] text-left text-[11px]">
+                <thead className="text-[10px] uppercase text-text-muted"><tr><th className="py-1 pr-2">Koneksi</th><th className="pr-2">Kuota</th><th className="pr-2">Sisa</th><th>Habis</th></tr></thead>
+                <tbody>{data.expiry.map((row) => <tr key={`${row.connectionId}-${row.quotaName}`} className="border-t border-border/50"><td className="max-w-[140px] truncate py-1 pr-2 text-text-main" title={row.name}>{row.name}</td><td className="pr-2 text-text-muted">{row.quotaName}</td><td className="pr-2">{row.pct}%</td><td className={row.flagged ? "font-semibold text-danger" : "text-text-muted"}>{row.daysLeft}d</td></tr>)}</tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="flex flex-col gap-2 p-3 sm:p-4">
+          <h2 className="text-sm font-semibold text-text-main">Per-key burn anomaly</h2>
+          {data.perKeyAnomaly.length === 0 ? <p className="text-xs text-text-muted">Tidak ada lonjakan per key.</p> : data.perKeyAnomaly.map((row) => (
+            <div key={row.name} className="flex items-center justify-between gap-2 border-t border-border/50 py-1 text-[11px]"><span className="truncate text-text-main" title={row.name}>{row.name}</span><span className={row.flagged ? "text-amber-600 dark:text-amber-400" : "text-text-muted"}>{row.ratio == null ? "—" : `${row.ratio}×`} · {fmtUsd(row.current)}</span></div>
+          ))}
+        </Card>
+        <Card className="flex flex-col gap-2 p-3 sm:p-4">
+          <h2 className="text-sm font-semibold text-text-main">Pricing audit</h2>
+          {data.pricingAudit.length === 0 ? <p className="text-xs text-text-muted">Tidak ada selisih biaya aktual vs pricing ≥20%.</p> : data.pricingAudit.map((row) => (
+            <div key={row.model} className="flex items-center justify-between gap-2 border-t border-border/50 py-1 text-[11px]"><span className="truncate text-text-main" title={row.model}>{row.model}</span><span className="text-amber-600 dark:text-amber-400">{row.deltaPct > 0 ? "+" : ""}{row.deltaPct}%</span></div>
+          ))}
+        </Card>
+      </div>
+
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Card className="flex min-w-0 flex-col gap-3 p-3 sm:p-4">
@@ -279,6 +355,28 @@ export default function InsightsPage() {
             </table>
           </div>
         ) : <p className="text-xs text-text-muted">Pilih combo lalu klik Simulasikan.</p>}
+      </Card>
+
+      <Card className="flex flex-col gap-3 p-3 sm:p-4">
+        <h2 className="text-sm font-semibold text-text-main">Notifications & provider matrix</h2>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-[11px] font-semibold text-text-main">Notification center</h3>
+            {data.notifications.length === 0 ? <p className="text-xs text-text-muted">Tidak ada notifikasi aktif.</p> : data.notifications.map((item, index) => (
+              <div key={`${item.text}-${index}`} className="flex items-center gap-2 border-t border-border/50 py-1 text-[11px]">
+                <span className={`size-1.5 rounded-full ${item.level === "error" ? "bg-danger" : item.level === "warning" ? "bg-amber-500" : "bg-primary"}`} />
+                <span className="text-text-main">{item.text}</span>
+              </div>
+            ))}
+          </div>
+          <div className="overflow-x-auto" tabIndex={0} aria-label="Matriks status provider">
+            <h3 className="mb-1 text-[11px] font-semibold text-text-main">Provider matrix</h3>
+            <table className="w-full min-w-[420px] text-left text-[10px]">
+              <thead className="uppercase text-text-muted"><tr><th className="py-1 pr-2">Provider</th><th className="pr-2">Score</th><th className="pr-2">Req</th><th className="pr-2">429</th><th>p95</th></tr></thead>
+              <tbody>{data.providerMatrix.map((row) => <tr key={`${row.provider}-${row.name}`} className="border-t border-border/50"><td className="py-1 pr-2 text-text-main">{row.provider}</td><td className="pr-2">{row.score ?? "—"}</td><td className="pr-2 text-text-muted">{fmtInt(row.requests)}</td><td className="pr-2 text-text-muted">{row.rate429}</td><td className="text-text-muted">{fmtMs(row.p95)}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </div>
       </Card>
     </div>
   );
