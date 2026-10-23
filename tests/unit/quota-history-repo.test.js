@@ -22,6 +22,21 @@ afterEach(() => {
 });
 
 describe("quotaHistory SQLite repo", () => {
+  it("reads retention days from env with a safe 1–90 clamp", async () => {
+    const { quotaHistoryRetentionDays } = await import("@/lib/db/repos/quotaHistoryRepo.js");
+    const previous = process.env.MEAI_QUOTA_HISTORY_RETENTION_DAYS;
+    process.env.MEAI_QUOTA_HISTORY_RETENTION_DAYS = "14";
+    expect(quotaHistoryRetentionDays()).toBe(14);
+    process.env.MEAI_QUOTA_HISTORY_RETENTION_DAYS = "0";
+    expect(quotaHistoryRetentionDays()).toBe(1);
+    process.env.MEAI_QUOTA_HISTORY_RETENTION_DAYS = "999";
+    expect(quotaHistoryRetentionDays()).toBe(90);
+    delete process.env.MEAI_QUOTA_HISTORY_RETENTION_DAYS;
+    expect(quotaHistoryRetentionDays()).toBe(7);
+    if (previous === undefined) delete process.env.MEAI_QUOTA_HISTORY_RETENTION_DAYS;
+    else process.env.MEAI_QUOTA_HISTORY_RETENTION_DAYS = previous;
+  });
+
   it("records one row per quota per minute and reads it back", async () => {
     const { recordQuotaSnapshot, getQuotaHistory } = await import(
       "@/lib/db/repos/quotaHistoryRepo.js"
