@@ -147,11 +147,12 @@ export default function ModelSelectModal({
       }
       if (event.key === "Escape" && searchQuery) {
         event.preventDefault();
+        event.stopPropagation();
         setSearchQuery("");
       }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [isOpen, searchQuery]);
 
   const [combos, setCombos] = useState([]);
