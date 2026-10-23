@@ -32,6 +32,7 @@ const PUBLIC_API_PATHS = [
   "/api/version",
   "/api/settings/require-login",
   "/api/auth/turnstile",
+  "/api/insights/shared",
 ];
 
 // Public top-level prefixes (LLM API endpoints with their own API key auth).

@@ -206,6 +206,17 @@ export default function InsightsPage() {
     setNotice("Leaderboard diexport sebagai CSV.");
   };
 
+  const shareInsights = async () => {
+    const response = await fetch("/api/insights/share", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hours: period, ttlMinutes: 60 }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) { setNotice(payload.error || "Share gagal."); return; }
+    try { await navigator.clipboard.writeText(payload.url); setNotice("Link snapshot (60 menit) disalin."); }
+    catch { setNotice(`Link snapshot (60 menit): ${payload.url}`); }
+  };
+
   if (loading) return <div className="p-4"><div className="h-64 animate-pulse rounded-2xl bg-surface-2" /></div>;
   if (error) return <div className="p-4"><Card className="border-danger/30 bg-danger/10 p-4 text-sm text-danger">Gagal memuat insights: {error}</Card></div>;
 
@@ -230,6 +241,7 @@ export default function InsightsPage() {
           </label>
           <button type="button" onClick={exportInsights} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Export JSON</button>
           <button type="button" onClick={exportCsv} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Export CSV</button>
+          <button type="button" onClick={shareInsights} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Share 60m</button>
           <button type="button" onClick={saveCurrentView} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Simpan view</button>
           <a href="/api/openapi" target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-primary hover:underline">OpenAPI</a>
         </div>
