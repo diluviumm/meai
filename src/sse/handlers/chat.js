@@ -9,6 +9,7 @@ import {
 } from "../services/auth.js";
 import { handleAntigravityQuotaError, clearAntigravityStrikes } from "../services/antigravityQuota.js";
 import { getSettings } from "@/lib/localDb";
+import { checkApiKeyBudget } from "@/lib/budgetGuard";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
@@ -49,7 +50,8 @@ export async function handleChat(request, clientRawRequest = null) {
   // Claude Code marks a 1M-context request as `<model>[1m]`; the marker matches
   // no combo, alias or provider/model pair, so it must not reach resolution.
   // The capability travels in the anthropic-beta header, forwarded as-is.
-  const { model: modelStr, contextMarker } = stripModelContextMarker(body.model);
+  const { model: modelStrRaw, contextMarker } = stripModelContextMarker(body.model);
+  let modelStr = modelStrRaw;
   if (contextMarker) body.model = modelStr;
 
   // Request summary is emitted as the unified "▶" line in chatCore (has fmt/thinking/account)
@@ -87,6 +89,25 @@ export async function handleChat(request, clientRawRequest = null) {
   const userAgent = request?.headers?.get("user-agent") || "";
   const bypassResponse = handleBypassRequest(body, modelStr, userAgent, !!settings.ccFilterNaming);
   if (bypassResponse) return bypassResponse.response || bypassResponse;
+
+  // Phase 2B: per-key hybrid budget. API key only; admin/cookie bypass.
+  const budget = await checkApiKeyBudget(apiKey, settings);
+  if (budget.blocked) {
+    if (budget.fallbackModel) {
+      log.warn("BUDGET", `Key ${budget.keyName} over budget; fallback ${budget.fallbackModel}`);
+      body.model = budget.fallbackModel;
+      modelStr = budget.fallbackModel;
+    } else {
+      log.warn("BUDGET", `Key ${budget.keyName} over budget (${budget.cost}/${budget.budget})`);
+      return new Response(JSON.stringify({
+        error: {
+          message: `Budget harian API key habis ($${budget.cost.toFixed(4)} / $${budget.budget.toFixed(2)}). Reset 00:00 WITA.`,
+          type: "insufficient_quota",
+          code: "insufficient_quota",
+        },
+      }), { status: 429, headers: { "Content-Type": "application/json" } });
+    }
+  }
 
   const requiredCapabilities = detectRequiredCapabilities(body);
 
