@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 export default function AnimatedNumber({ value, format = (n) => String(n), duration = 650 }) {
   const target = Number(value);
   const safeTarget = Number.isFinite(target) ? target : 0;
-  const [shown, setShown] = useState(safeTarget);
+  const [shown, setShown] = useState(0);
   const previous = useRef(safeTarget);
 
   useEffect(() => {

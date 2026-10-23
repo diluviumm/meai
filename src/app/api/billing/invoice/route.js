@@ -63,11 +63,14 @@ export async function GET(request) {
     page.drawText("Dokumen internal · bukan faktur pajak resmi", { x: margin, y: pageHeight - 92, size: 8, font, color: muted });
     y = pageHeight - 145;
 
-    text("Nomor", margin, 8, muted); text(invoiceNo, margin + 100, 9, ink);
-    text("Tanggal", margin, 8, muted); text(generated.toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Makassar" }) + " WITA", margin + 100, 9, ink);
-    text("Periode", margin, 8, muted); text(LABELS[period], margin + 100, 9, ink);
-    text("Kurs", margin, 8, muted); text(`1 USD = ${new Intl.NumberFormat("id-ID").format(rate)} IDR (estimasi)`, margin + 100, 9, ink);
-    y -= 28;
+    text("Nomor", margin, 8, muted); text(invoiceNo, margin + 80, 9, ink);
+    y -= 15;
+    text("Tanggal", margin, 8, muted); text(generated.toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Makassar" }) + " WITA", margin + 80, 9, ink);
+    y -= 15;
+    text("Periode", margin, 8, muted); text(LABELS[period], margin + 80, 9, ink);
+    y -= 15;
+    text("Kurs", margin, 8, muted); text(`1 USD = ${new Intl.NumberFormat("id-ID").format(rate)} IDR (estimasi)`, margin + 80, 9, ink);
+    y -= 20;
     page.drawLine({ start: { x: margin, y }, end: { x: pageWidth - margin, y }, thickness: 1, color: line });
     y -= 24;
 

@@ -429,8 +429,8 @@ export default function InsightsPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-text-main">Model leaderboard</h2>
             <div className="flex items-center gap-1.5">
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari model…" aria-label="Cari model leaderboard" className="h-7 w-28 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main outline-none focus:border-primary" />
-              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Urutkan leaderboard" className="h-7 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main">
+              <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} placeholder="Cari model…" aria-label="Cari model leaderboard" className="h-7 w-28 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main outline-none focus:border-primary" />
+              <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPage(0); }} aria-label="Urutkan leaderboard" className="h-7 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main">
                 <option value="cost">Cost</option><option value="requests">Req</option><option value="p95">p95</option><option value="success">Success</option>
               </select>
               <details className="relative">
