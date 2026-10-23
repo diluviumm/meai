@@ -223,15 +223,16 @@ const FEATURES = [
     icon: "monitoring",
     title: "Insights & Health",
     summary:
-      "Health score per koneksi, leaderboard latency/biaya/cache, anomaly burn, rate-limit heatmap, status automation, quiet hours, dan combo simulator.",
+      "Health score, leaderboard latency/biaya/cache, anomaly burn per koneksi & per key, rate-limit heatmap, forecast pacing, quota expiry, SLO, fairness, pricing audit, live SSE, notifikasi, matriks provider, export JSON, dan combo simulator.",
     steps: [
       "Buka Insights & Health dari sidebar.",
-      "Baca health score 0–100 (success, 429, p95) dan leaderboard model: cost/1k serta cache hit.",
-      "Lihat heatmap 429 per API key/jam; sel merah = rasio rate-limit tinggi.",
-      "Atur quiet hours agar alert budget tidak dikirim pada jam tertentu.",
-      "Pilih combo lalu Simulasikan untuk melihat urutan fallback, health score, dan compatibility tanpa request ke provider.",
+      "Baca health score 0–100 (success, 429, p95), leaderboard model, dan heatmap 429 per key/jam.",
+      "Pantau Forecast & SLO: spend hari ini vs budget, projected akhir hari, p95 SLO, fairness, DB size.",
+      "Lihat Quota expiry forecast, per-key burn anomaly, pricing audit, notification center, dan provider matrix.",
+      "Gunakan Export JSON untuk snapshot; badge LIVE berarti stream SSE aktif.",
+      "Atur quiet hours; pilih combo lalu Simulasikan untuk dry-run fallback/health/capability.",
     ],
-    tip: "Health score bersifat advisory; routing aktual tetap mengikuti urutan combo. Status automation dibaca dari file state nyata (compaction, restore drill, catalog diff, WCAG), bukan dummy.",
+    tip: "Health score bersifat advisory; routing aktual tetap mengikuti urutan combo. Status automation dibaca dari file state nyata (compaction, restore drill, catalog diff, WCAG), bukan dummy. Ctrl/⌘ K membuka command palette.",
     href: "/dashboard/insights",
   },
   {

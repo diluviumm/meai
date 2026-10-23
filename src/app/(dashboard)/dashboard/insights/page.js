@@ -122,7 +122,7 @@ export default function InsightsPage() {
           <p className="mt-0.5 text-xs text-text-muted">Health score, leaderboard latency/biaya, anomali burn, cache, rate-limit heatmap, dan ops otomatis.</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] ${live ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-border bg-surface text-text-muted"}`}>
+          <span className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] ${live ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-border bg-surface text-text-muted"}`}>
             <span className={`size-1.5 rounded-full ${live ? "bg-emerald-500" : "bg-text-muted"}`} /> {live ? "LIVE" : "offline"} · {ticks}
           </span>
           <button type="button" onClick={exportInsights} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Export JSON</button>

@@ -246,6 +246,16 @@ alih-alih mengosongkan kartu.
   quota secara manual.
 - **Quiet hours** menyimpan `settings.alertQuietHours`; timer budget tidak
   mengirim notifikasi di dalam jendela tersebut.
+- **Forecast & SLO** menampilkan spend hari ini, projected akhir hari, SLO p95,
+  fairness score, ukuran DB, jumlah provider, dan notifikasi aktif.
+- **Quota expiry forecast** memproyeksikan pemakaian dari dua sampel terakhir;
+  entri ≤3 hari ditandai merah.
+- **Per-key burn anomaly**, **pricing audit**, **notification center**, dan
+  **provider matrix** membantu menemukan biaya/koneksi yang menyimpang.
+- **Export JSON** mengunduh snapshot seluruh payload; **Ctrl/⌘ K** membuka
+  command palette untuk navigasi cepat.
+- Endpoint baru: `GET /api/events/stream` (SSE heartbeat 15 detik) dan
+  `GET /api/openapi`; endpoint analytics seperti di atas.
 - OpenAPI schema: `GET /api/openapi`; endpoint analytics:
   `GET /api/insights?hours=24`, `POST /api/combos/simulate`,
   `POST /api/maintenance/quota-compaction`.
