@@ -270,6 +270,19 @@ alih-alih mengosongkan kartu.
 | `meai-restore-drill.timer` | tanggal 1 04:40 | backup SQLite + integrity + baca `quotaHistory` |
 | `meai-catalog-watch.timer` | harian 06:00 | snapshot `/v1/models` + diff added/removed |
 
+### 7.10 Optimizer & UX
+
+- **Periode** Insights: 1 jam / 24 jam / 7 hari; semua metrik mengikuti periode.
+- **Auto 30s** dapat dimatikan; refresh manual terjadi saat periode/filter berubah.
+- **Leaderboard** bisa dicari, diurutkan (cost/req/p95/success), dan diexport CSV.
+- **Optimizer** menampilkan completion share, cache share, average cost/1k,
+  saran optimasi, usage timeline 24 jam, quota reset calendar, serta umur API key.
+- **Alert history** disimpan lokal di browser (maksimal 30 entri, dedup per teks);
+  **Simpan view** menyimpan kombinasi periode/filter/sort di browser.
+- **Mobile bottom nav** muncul di layar kecil (<lg) untuk Overview, Insights,
+  Usage, Quota, dan Panduan; konten diberi padding bawah agar tidak tertutup.
+- **Export JSON** = snapshot penuh; **Export CSV** = leaderboard terfilter.
+
 ---
 
 ## 8. CodeBuddy Intl: 11128 vs 11140

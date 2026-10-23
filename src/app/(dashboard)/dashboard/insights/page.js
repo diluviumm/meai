@@ -192,6 +192,19 @@ export default function InsightsPage() {
     setNotice("Snapshot insights diexport sebagai JSON.");
   };
 
+  const exportCsv = () => {
+    const header = ["model", "requests", "successRate", "p50", "p95", "cost", "costPer1k", "cacheHitRate"];
+    const lines = visibleLeaderboard.map((row) => header.map((key) => JSON.stringify(row[key] ?? "")).join(","));
+    const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `meai-leaderboard-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setNotice("Leaderboard diexport sebagai CSV.");
+  };
+
   if (loading) return <div className="p-4"><div className="h-64 animate-pulse rounded-2xl bg-surface-2" /></div>;
   if (error) return <div className="p-4"><Card className="border-danger/30 bg-danger/10 p-4 text-sm text-danger">Gagal memuat insights: {error}</Card></div>;
 
@@ -215,6 +228,7 @@ export default function InsightsPage() {
             <input type="checkbox" checked={auto} onChange={(event) => setAuto(event.target.checked)} aria-label="Auto refresh 30 detik" /> auto 30s
           </label>
           <button type="button" onClick={exportInsights} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Export JSON</button>
+          <button type="button" onClick={exportCsv} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Export CSV</button>
           <button type="button" onClick={saveCurrentView} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Simpan view</button>
           <a href="/api/openapi" target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-primary hover:underline">OpenAPI</a>
         </div>
