@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 const COMMANDS = [
   { href: "/dashboard/overview", label: "Overview", icon: "space_dashboard" },
   { href: "/dashboard/insights", label: "Insights & Health", icon: "monitoring" },
+  { href: "/dashboard/governance", label: "Governance & Safety", icon: "policy" },
   { href: "/dashboard/usage", label: "Usage", icon: "bar_chart" },
   { href: "/dashboard/quota", label: "Quota Tracker", icon: "data_usage" },
   { href: "/dashboard/quota/history", label: "Riwayat Quota", icon: "history" },

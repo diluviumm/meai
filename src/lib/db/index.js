@@ -75,6 +75,7 @@ export {
 
 // Insights (leaderboard, health score, anomaly, rate-limit heatmap)
 export { getInsights } from "./repos/insightsRepo.js";
+export { getGovernance, snapshotSettings } from "./repos/governanceRepo.js";
 
 // Export/import full DB
 export async function exportDb() {
