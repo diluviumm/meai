@@ -390,6 +390,8 @@ export async function getInsights({ hours = WINDOW_HOURS, apiKey = null } = {}) 
   if (restore && !restore.ok) notifications.push({ level: "error", text: "Restore drill failed" });
   const catalog = readStatusFile("catalog-diff.json");
   if (catalog && (catalog.added?.length || catalog.removed?.length)) notifications.push({ level: "info", text: `Catalog +${catalog.added?.length || 0}/−${catalog.removed?.length || 0}` });
+  const quotaAlert = readStatusFile("quota-alert.json");
+  for (const alert of quotaAlert?.alerts || []) notifications.push({ level: "warning", text: `${alert.connectionId?.slice(0, 8)} ${alert.quotaName}: ${alert.reason}` });
 
   const cacheTtlAdvisor = leaderboard
     .filter((row) => row.requests >= 10)
@@ -448,6 +450,7 @@ export async function getInsights({ hours = WINDOW_HOURS, apiKey = null } = {}) 
       compaction: readStatusFile("quota-compaction.json"),
       restoreDrill: readStatusFile("restore-drill.json"),
       catalogDiff: readStatusFile("catalog-diff.json"),
+      quotaAlert: readStatusFile("quota-alert.json"),
       a11y: readStatusFile("a11y-report.json"),
     },
     settings: {
