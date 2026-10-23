@@ -40,11 +40,18 @@ export default function InsightsPage() {
   const [quiet, setQuiet] = useState({ enabled: false, start: "22:00", end: "07:00" });
   const [live, setLive] = useState(false);
   const [ticks, setTicks] = useState(0);
+  const [period, setPeriod] = useState(24);
+  const [auto, setAuto] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState("cost");
+  const [savedViews, setSavedViews] = useState([]);
+  const [alertHistory, setAlertHistory] = useState([]);
 
   useEffect(() => {
     let alive = true;
     Promise.all([
-      fetch("/api/insights?hours=24", { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+      fetch(`/api/insights?hours=${period}`, { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
       fetch("/api/combos").then((r) => (r.ok ? r.json() : { combos: [] })).catch(() => ({ combos: [] })),
     ]).then(([insights, comboData]) => {
       if (!alive) return;
@@ -55,7 +62,34 @@ export default function InsightsPage() {
       setComboName((current) => current || list[0]?.name || "");
     }).catch((err) => alive && setError(err.message)).finally(() => alive && setLoading(false));
     return () => { alive = false; };
+  }, [period, refreshKey]);
+
+  useEffect(() => {
+    if (!auto) return undefined;
+    const timer = setInterval(() => setRefreshKey((value) => value + 1), 30_000);
+    return () => clearInterval(timer);
+  }, [auto]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try { setSavedViews(JSON.parse(localStorage.getItem("meai-insights-views") || "[]")); } catch { setSavedViews([]); }
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!data?.notifications?.length) return undefined;
+    const timer = setTimeout(() => {
+      try {
+        const previous = JSON.parse(localStorage.getItem("meai-alert-history") || "[]");
+        const fresh = data.notifications.filter((item) => !previous.some((old) => old.text === item.text));
+        const merged = [...fresh.map((item) => ({ ...item, ts: Date.now() })), ...previous].slice(0, 30);
+        localStorage.setItem("meai-alert-history", JSON.stringify(merged));
+        setAlertHistory(merged);
+      } catch { /* storage may be unavailable */ }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [data?.notifications]);
 
   useEffect(() => {
     const source = new EventSource("/api/events/stream");
@@ -67,6 +101,53 @@ export default function InsightsPage() {
 
   const topConnection = useMemo(() => data?.connections?.[0] || null, [data]);
   const cacheRate = data?.totals?.cacheHitRate;
+  const tokenEfficiency = useMemo(() => {
+    const rows = data?.leaderboard || [];
+    const prompt = rows.reduce((sum, row) => sum + row.promptTokens, 0);
+    const completion = rows.reduce((sum, row) => sum + row.completionTokens, 0);
+    const cached = rows.reduce((sum, row) => sum + row.cachedTokens, 0);
+    return {
+      completionShare: prompt + completion ? completion / (prompt + completion) : null,
+      cacheShare: prompt ? cached / prompt : null,
+      avgCostPer1k: rows.length ? rows.reduce((sum, row) => sum + (row.costPer1k || 0), 0) / rows.length : null,
+    };
+  }, [data]);
+  const suggestions = useMemo(() => {
+    const list = [];
+    if (cacheRate != null && cacheRate < 0.3) list.push({ level: "warning", text: "Cache hit rendah (<30%); pertimbangkan prompt prefix stabil atau cache TTL." });
+    for (const row of data?.connections || []) {
+      if (row.p95 > 30_000) list.push({ level: "warning", text: `${row.name}: p95 ${Math.round(row.p95 / 1000)}s; cek provider/timeout.` });
+      if (row.rate429 > 0) list.push({ level: "info", text: `${row.name}: ${row.rate429} response 429; turunkan concurrency atau tambah fallback.` });
+    }
+    if ((data?.expiry || []).some((row) => row.flagged)) list.push({ level: "warning", text: "Ada kuota ≤3 hari; siapkan fallback atau isi ulang." });
+    if ((data?.keyAges || []).some((row) => row.stale)) list.push({ level: "info", text: "Ada API key >90 hari; jadwalkan rotasi." });
+    return list.slice(0, 5);
+  }, [data, cacheRate]);
+  const visibleLeaderboard = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const rows = (data?.leaderboard || []).filter((row) => !q || row.model.toLowerCase().includes(q));
+    const sorters = {
+      cost: (a, b) => b.cost - a.cost,
+      requests: (a, b) => b.requests - a.requests,
+      p95: (a, b) => (b.p95 || 0) - (a.p95 || 0),
+      success: (a, b) => a.successRate - b.successRate,
+    };
+    return [...rows].sort(sorters[sortBy] || sorters.cost);
+  }, [data, query, sortBy]);
+
+  const saveCurrentView = () => {
+    const next = [{ name: `${period}j · ${sortBy}${query ? ` · ${query}` : ""}`, period, sortBy, query, ts: Date.now() }, ...savedViews].slice(0, 8);
+    setSavedViews(next);
+    try { localStorage.setItem("meai-insights-views", JSON.stringify(next)); } catch { /* noop */ }
+    setNotice("View tersimpan di browser.");
+  };
+  const applyView = (view) => {
+    setPeriod(view.period);
+    setSortBy(view.sortBy);
+    setQuery(view.query || "");
+    setNotice(`View diterapkan: ${view.name}.`);
+  };
+
 
   const saveQuiet = async () => {
     const response = await fetch("/api/settings", {
@@ -121,20 +202,33 @@ export default function InsightsPage() {
           <h1 className="text-lg font-semibold text-text-main">Insights & Health</h1>
           <p className="mt-0.5 text-xs text-text-muted">Health score, leaderboard latency/biaya, anomali burn, cache, rate-limit heatmap, dan ops otomatis.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <span className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] ${live ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-border bg-surface text-text-muted"}`}>
             <span className={`size-1.5 rounded-full ${live ? "bg-emerald-500" : "bg-text-muted"}`} /> {live ? "LIVE" : "offline"} · {ticks}
           </span>
+          <select value={period} onChange={(event) => setPeriod(Number(event.target.value))} aria-label="Periode insights" className="h-7 rounded-full border border-border bg-surface px-2 text-[10px] text-text-main">
+            <option value={1}>1 jam</option>
+            <option value={24}>24 jam</option>
+            <option value={168}>7 hari</option>
+          </select>
+          <label className="flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-1 text-[10px] text-text-muted">
+            <input type="checkbox" checked={auto} onChange={(event) => setAuto(event.target.checked)} aria-label="Auto refresh 30 detik" /> auto 30s
+          </label>
           <button type="button" onClick={exportInsights} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Export JSON</button>
-          <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted">{data.windowHours} jam terakhir</span>
+          <button type="button" onClick={saveCurrentView} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Simpan view</button>
           <a href="/api/openapi" target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-primary hover:underline">OpenAPI</a>
         </div>
       </div>
 
       {notice ? <p className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">{notice}</p> : null}
+      {savedViews.length ? (
+        <div className="flex flex-wrap gap-1.5">
+          {savedViews.map((view) => <button key={`${view.name}-${view.ts}`} type="button" onClick={() => applyView(view)} className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] text-text-muted hover:text-primary">{view.name}</button>)}
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Kpi label="Requests" value={fmtInt(data.totals.requests)} hint="usageHistory 24 jam" />
+        <Kpi label="Requests" value={fmtInt(data.totals.requests)} hint={`usageHistory ${data.windowHours} jam`} />
         <Kpi label="Success" value={pct(data.totals.successRate)} hint="2xx–3xx" tone="text-emerald-600 dark:text-emerald-400" />
         <Kpi label="Cache hit" value={pct(cacheRate)} hint="cached / prompt token" tone="text-primary" />
         <Kpi label="Anomaly" value={data.anomaly.flagged ? `${data.anomaly.ratio}×` : "normal"} hint={`${fmtUsd(data.anomaly.currentHourCost)} jam ini`} tone={data.anomaly.flagged ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
@@ -236,9 +330,14 @@ export default function InsightsPage() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Card className="flex min-w-0 flex-col gap-3 p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-text-main">Model leaderboard</h2>
-            <span className="text-[10px] text-text-muted">cost/1k + latency</span>
+            <div className="flex items-center gap-1.5">
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari model…" aria-label="Cari model leaderboard" className="h-7 w-28 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main outline-none focus:border-primary" />
+              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Urutkan leaderboard" className="h-7 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main">
+                <option value="cost">Cost</option><option value="requests">Req</option><option value="p95">p95</option><option value="success">Success</option>
+              </select>
+            </div>
           </div>
           <div className="overflow-x-auto" tabIndex={0} aria-label="Tabel leaderboard model">
             <table className="w-full min-w-[620px] text-left text-[11px]">
@@ -246,7 +345,7 @@ export default function InsightsPage() {
                 <tr><th className="py-1.5 pr-2">Model</th><th className="pr-2">Req</th><th className="pr-2">Success</th><th className="pr-2">p95</th><th className="pr-2">Cost/1k</th><th>Cache</th></tr>
               </thead>
               <tbody>
-                {data.leaderboard.map((row) => (
+                {visibleLeaderboard.map((row) => (
                   <tr key={row.model} className="border-t border-border/50">
                     <td className="max-w-[220px] truncate py-1.5 pr-2 font-medium text-text-main" title={row.model}>{row.model}</td>
                     <td className="pr-2 text-text-muted">{fmtInt(row.requests)}</td>
@@ -355,6 +454,47 @@ export default function InsightsPage() {
             </table>
           </div>
         ) : <p className="text-xs text-text-muted">Pilih combo lalu klik Simulasikan.</p>}
+      </Card>
+
+      <Card className="flex flex-col gap-3 p-3 sm:p-4">
+        <h2 className="text-sm font-semibold text-text-main">Optimizer</h2>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <Kpi label="Completion share" value={pct(tokenEfficiency.completionShare)} hint="completion / total token" />
+          <Kpi label="Cache share" value={pct(tokenEfficiency.cacheShare)} hint="cached / prompt" />
+          <Kpi label="Avg cost/1k" value={tokenEfficiency.avgCostPer1k == null ? "—" : fmtUsd(tokenEfficiency.avgCostPer1k)} hint="leaderboard" />
+        </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-[11px] font-semibold text-text-main">Saran optimasi</h3>
+            {suggestions.length === 0 ? <p className="text-xs text-text-muted">Belum ada saran; metrik dalam batas.</p> : suggestions.map((item, index) => (
+              <div key={`${item.text}-${index}`} className="flex items-start gap-2 border-t border-border/50 py-1 text-[11px]"><span className={`mt-1 size-1.5 shrink-0 rounded-full ${item.level === "warning" ? "bg-amber-500" : "bg-primary"}`} /><span className="text-text-main">{item.text}</span></div>
+            ))}
+          </div>
+          <div className="flex flex-col gap-1">
+            <h3 className="text-[11px] font-semibold text-text-main">Usage timeline</h3>
+            <div className="flex h-16 items-end gap-0.5" role="img" aria-label="Usage per jam">
+              {data.timeline.map((item) => {
+                const max = Math.max(1, ...data.timeline.map((row) => row.requests));
+                return <span key={item.hour} className="flex-1 rounded-t-sm bg-primary/60" style={{ height: `${Math.max(3, (item.requests / max) * 100)}%` }} title={`${item.hour}:00 — ${item.requests} req, ${fmtUsd(item.cost)}`} />;
+              })}
+            </div>
+            <div className="flex justify-between text-[9px] text-text-muted"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div>
+            <h3 className="mb-1 text-[11px] font-semibold text-text-main">Quota reset calendar</h3>
+            {data.resetCalendar.length === 0 ? <p className="text-xs text-text-muted">Belum ada pola reset (butuh ≥2 reset terdeteksi).</p> : data.resetCalendar.map((row) => <div key={`${row.connectionId}-${row.quotaName}`} className="flex justify-between border-t border-border/50 py-1 text-[10px]"><span className="truncate text-text-main">{row.name} · {row.quotaName}</span><span className="text-text-muted">{row.daysUntil <= 0 ? "sudah lewat" : `${row.daysUntil}d`}</span></div>)}
+          </div>
+          <div>
+            <h3 className="mb-1 text-[11px] font-semibold text-text-main">API key age</h3>
+            {data.keyAges.slice(0, 5).map((row) => <div key={row.id} className="flex justify-between border-t border-border/50 py-1 text-[10px]"><span className="truncate text-text-main">{row.name}</span><span className={row.stale ? "text-amber-600 dark:text-amber-400" : "text-text-muted"}>{row.days == null ? "—" : `${row.days}d`}{row.stale ? " · rotasi" : ""}</span></div>)}
+          </div>
+        </div>
+        <div>
+          <h3 className="mb-1 text-[11px] font-semibold text-text-main">Alert history (browser)</h3>
+          {alertHistory.length === 0 ? <p className="text-xs text-text-muted">Belum ada riwayat alert di browser ini.</p> : alertHistory.slice(0, 5).map((item, index) => <div key={`${item.text}-${item.ts}-${index}`} className="flex justify-between border-t border-border/50 py-1 text-[10px]"><span className="truncate text-text-main">{item.text}</span><span className="text-text-muted">{new Date(item.ts).toLocaleTimeString()}</span></div>)}
+        </div>
       </Card>
 
       <Card className="flex flex-col gap-3 p-3 sm:p-4">

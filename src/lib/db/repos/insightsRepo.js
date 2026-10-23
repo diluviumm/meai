@@ -222,6 +222,52 @@ export async function getInsights({ hours = WINDOW_HOURS } = {}) {
     return { name, current, baseline: Number(base.toFixed(6)), ratio: base > 0 ? Number((current / base).toFixed(2)) : null, flagged: base > 0 && current > base * 1.8 };
   }).filter((row) => row.flagged || row.ratio >= 1.5).sort((a, b) => (b.ratio || 0) - (a.ratio || 0)).slice(0, 8);
 
+  const timeline = Array.from({ length: 24 }, () => ({ requests: 0, success: 0, cost: 0, latency: [] }));
+  for (const row of rows) {
+    const hour = new Date(row.timestamp).getHours();
+    const item = timeline[hour];
+    item.requests += 1;
+    if (readStatus(row.status) >= 200 && readStatus(row.status) < 400) item.success += 1;
+    item.cost += Number(row.cost || 0);
+    const latency = latencyOf(row.meta);
+    if (latency != null) item.latency.push(latency);
+  }
+  const timelineRows = timeline.map((item, hour) => ({ hour, requests: item.requests, successRate: item.requests ? Number((item.success / item.requests).toFixed(3)) : null, cost: Number(item.cost.toFixed(6)), p95: percentile(item.latency, 95) }));
+
+  const resetSeries = {};
+  for (const row of quotaRows) {
+    const key = `${row.connectionId}|${row.quotaName}`;
+    if (!resetSeries[key]) resetSeries[key] = [];
+    resetSeries[key].push(row);
+  }
+  const resetCalendar = Object.entries(resetSeries).map(([key, series]) => {
+    const ordered = [...series].sort((a, b) => a.sampledAt - b.sampledAt);
+    const resets = [];
+    for (let i = 1; i < ordered.length; i += 1) {
+      if (ordered[i].used < ordered[i - 1].used) resets.push(ordered[i].sampledAt);
+    }
+    if (resets.length < 2) return null;
+    const intervals = resets.slice(1).map((ts, index) => (ts - resets[index]) / 86_400_000).filter((days) => days > 0);
+    const intervalDays = intervals.length ? intervals.reduce((a, b) => a + b, 0) / intervals.length : null;
+    if (!intervalDays) return null;
+    const [connectionId, quotaName] = key.split("|");
+    return {
+      connectionId,
+      name: connectionNames[connectionId] || `Account ${connectionId.slice(0, 8)}`,
+      quotaName,
+      lastReset: resets[resets.length - 1],
+      intervalDays: Number(intervalDays.toFixed(1)),
+      nextResetAt: Math.round(resets[resets.length - 1] + intervalDays * 86_400_000),
+      daysUntil: Number(((resets[resets.length - 1] + intervalDays * 86_400_000 - Date.now()) / 86_400_000).toFixed(1)),
+    };
+  }).filter(Boolean).sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 8);
+
+  const keyAges = apiKeys.map((key) => {
+    const created = new Date(key.createdAt).getTime();
+    const days = Number.isFinite(created) ? Math.floor((Date.now() - created) / 86_400_000) : null;
+    return { id: key.id, name: key.name || MASK(key.key), active: Boolean(key.isActive), createdAt: key.createdAt, days, stale: days != null && days > 90 };
+  }).sort((a, b) => (b.days || 0) - (a.days || 0));
+
   const sloP95Ms = Number(settings.sloP95Ms) || 30_000;
   const sloSuccessRate = Number(settings.sloSuccessRate) || 0.99;
   const slo = {
@@ -291,6 +337,9 @@ export async function getInsights({ hours = WINDOW_HOURS } = {}) {
     notifications,
     db: { bytes: dbBytes },
     providerMatrix: connectionRows.map((row) => ({ provider: row.provider, name: row.name, score: row.score, requests: row.requests, rate429: row.rate429, p95: row.p95 })),
+    timeline: timelineRows,
+    resetCalendar,
+    keyAges,
     quotaHistory: { rows: quotaStats.rows || 0, oldest: quotaStats.oldest || null, newest: quotaStats.newest || null },
     ops: {
       compaction: readStatusFile("quota-compaction.json"),
