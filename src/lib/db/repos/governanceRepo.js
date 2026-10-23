@@ -5,6 +5,7 @@ import { getAdapter } from "../driver.js";
 import { getSettings } from "./settingsRepo.js";
 import { getCombos } from "./combosRepo.js";
 import { getInsights } from "./insightsRepo.js";
+import { getPricing } from "./pricingRepo.js";
 import { readSettingsAudit } from "../../../lib/settingsAudit.js";
 
 const MEAI_DIR = path.join(os.homedir(), ".meai");
@@ -80,6 +81,25 @@ export async function getGovernance() {
   const usageCount = db.get(`SELECT COUNT(*) AS rows FROM usageHistory`)?.rows || 0;
   const quotaCount = db.get(`SELECT COUNT(*) AS rows FROM quotaHistory`)?.rows || 0;
 
+  const pricing = await getPricing().catch(() => ({}));
+  const flatPricing = {};
+  for (const [provider, models] of Object.entries(pricing || {})) {
+    if (!models || typeof models !== "object") continue;
+    for (const [model, price] of Object.entries(models)) {
+      if (price && typeof price === "object") flatPricing[`${provider}/${model}`] = { input: price.input, output: price.output, cached: price.cached };
+    }
+  }
+  const pricingSnapshot = readJson("pricing-snapshot.json");
+  const previousPricing = pricingSnapshot?.prices || null;
+  const priceDiff = previousPricing ? {
+    available: true,
+    count: Object.keys(flatPricing).length,
+    added: Object.keys(flatPricing).filter((key) => !previousPricing[key]),
+    removed: Object.keys(previousPricing).filter((key) => !flatPricing[key]),
+    changed: Object.keys(flatPricing).filter((key) => previousPricing[key] && JSON.stringify(flatPricing[key]) !== JSON.stringify(previousPricing[key])),
+  } : { available: false, count: Object.keys(flatPricing).length, added: [], removed: [], changed: [] };
+
+
   return {
     generatedAt: new Date().toISOString(),
     selfCheck: {
@@ -107,7 +127,7 @@ export async function getGovernance() {
     rateAdvice,
     timeoutAdvisor,
     deprecations: readJson("model-deprecations.json"),
-    priceDiff: readJson("pricing-diff.json"),
+    priceDiff,
     capabilityCoverage: (insights.providerMatrix || []).map((row) => ({ provider: row.provider, connections: 1, score: row.score })),
     budgetConfidence: {
       confidence,

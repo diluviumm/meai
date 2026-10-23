@@ -290,6 +290,17 @@ export async function getInsights({ hours = WINDOW_HOURS, apiKey = null } = {}) 
     cells: cells.map((cell) => ({ requests: cell.requests, p95: percentile(cell.latency, 95), rate429: cell.rate429 })),
   })).sort((a, b) => b.cells.reduce((sum, cell) => sum + cell.requests, 0) - a.cells.reduce((sum, cell) => sum + cell.requests, 0)).slice(0, 6);
 
+  const providerTimelineMap = {};
+  for (const row of rows) {
+    const provider = row.provider || "unknown";
+    if (!providerTimelineMap[provider]) providerTimelineMap[provider] = Array.from({ length: 24 }, () => ({ requests: 0, cost: 0, rate429: 0 }));
+    const cell = providerTimelineMap[provider][new Date(row.timestamp).getHours()];
+    cell.requests += 1;
+    cell.cost += Number(row.cost || 0);
+    if (readStatus(row.status) === 429) cell.rate429 += 1;
+  }
+  const providerTimeline = Object.entries(providerTimelineMap).map(([provider, cells]) => ({ provider, cells })).sort((a, b) => b.cells.reduce((sum, cell) => sum + cell.requests, 0) - a.cells.reduce((sum, cell) => sum + cell.requests, 0)).slice(0, 8);
+
   const sloP95 = Number(settings.sloP95Ms) || 30_000;
   const sloSuccess = Number(settings.sloSuccessRate) || 0.99;
   const sloIncidents = [];
@@ -411,6 +422,7 @@ export async function getInsights({ hours = WINDOW_HOURS, apiKey = null } = {}) 
     weekdayForecast,
     cacheHygiene,
     latencyHeatmap,
+    providerTimeline,
     sloIncidents: sloIncidentSummary,
     resetCalendar,
     keyAges,
