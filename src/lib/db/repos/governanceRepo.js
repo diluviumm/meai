@@ -50,27 +50,6 @@ export async function getGovernance() {
   const snapshotFlat = snapshot ? flatten(snapshot.settings || snapshot) : null;
   const changedKeys = snapshotFlat ? Object.keys({ ...currentFlat, ...snapshotFlat }).filter((key) => JSON.stringify(currentFlat[key]) !== JSON.stringify(snapshotFlat[key])) : null;
 
-  const circuit = (connectionRows || []).map((row) => {
-    const health = insights.connections.find((item) => item.id === row.id);
-    let data = {};
-    try { data = JSON.parse(row.data || "{}"); } catch { data = {}; }
-    return {
-      id: row.id, name: row.name || health?.name || row.provider, provider: row.provider,
-      rate429: health?.rate429 || 0, p95: health?.p95 || null,
-      rateLimitedUntil: data.rateLimitedUntil || null, backoffLevel: data.backoffLevel || 0,
-      state: data.rateLimitedUntil && new Date(data.rateLimitedUntil).getTime() > Date.now() ? "cooldown" : "closed",
-    };
-  }).filter((row) => row.rate429 > 0 || row.state === "cooldown");
-
-  const rateAdvice = insights.connections
-    .filter((row) => row.rate429 > 0 || row.p95 > 30_000)
-    .map((row) => ({ name: row.name, rate429: row.rate429, p95: row.p95, advice: row.rate429 ? "Kurangi concurrency / tambah fallback" : "Turunkan timeout atau pilih provider lain" }));
-
-  const timeoutAdvisor = insights.connections.map((row) => {
-    const recommended = row.p95 == null ? 60_000 : Math.round(Math.max(15_000, Math.min(120_000, row.p95 * 1.5)));
-    return { name: row.name, p95: row.p95, recommendedMs: recommended, reason: row.p95 == null ? "belum ada latency" : "p95 × 1.5, clamp 15–120s" };
-  });
-
   const timeline = insights.timeline || [];
   const costs = timeline.map((row) => row.cost).filter((value) => value >= 0);
   const mean = costs.length ? costs.reduce((a, b) => a + b, 0) / costs.length : 0;
@@ -122,10 +101,6 @@ export async function getGovernance() {
       latestUpdatedAt: combos.reduce((latest, combo) => Math.max(latest, new Date(combo.updatedAt || 0).getTime()), 0) || null,
       names: combos.map((combo) => combo.name),
     },
-    circuit,
-    healthRouting: readJson("health-routing.json"),
-    rateAdvice,
-    timeoutAdvisor,
     deprecations: readJson("model-deprecations.json"),
     priceDiff,
     capabilityCoverage: (insights.providerMatrix || []).map((row) => ({ provider: row.provider, connections: 1, score: row.score })),

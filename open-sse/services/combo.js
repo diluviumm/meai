@@ -5,7 +5,6 @@
 import { checkFallbackError, formatRetryAfter } from "./accountFallback.js";
 import { unavailableResponse } from "../utils/error.js";
 import { getCapabilitiesForModel } from "../providers/capabilities.js";
-import { healthRouteFor } from "./healthRouting.js";
 import { parseModel } from "./model.js";
 import { extractTextContent } from "../translator/formats/gemini.js";
 import { peekStreamForContent, reconstructStream, isNoRetryFinish } from "./emptyFailover.js";
@@ -374,13 +373,6 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
     }
   }
 
-  // Phase 2: health-weighted canary. Default off (state file absent/percent 0).
-  const healthOrdered = healthRouteFor(rotatedModels, `${comboName || "combo"}:${Date.now()}:${Math.random()}`);
-  if (healthOrdered[0] !== rotatedModels[0]) {
-    log.info("COMBO", `health canary reorder → ${healthOrdered[0]}`);
-  }
-  rotatedModels = healthOrdered;
-  
   let lastError = null;
   let earliestRetryAfter = null;
   let lastStatus = null;

@@ -62,7 +62,7 @@ export default function GovernancePage() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-3 sm:p-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-lg font-semibold text-text-main">Governance & Safety</h1><p className="mt-0.5 text-xs text-text-muted">12 pemeriksaan operasional: backup, drift, circuit, biaya, webhook, dan performa.</p></div>
+        <div><h1 className="text-lg font-semibold text-text-main">Governance & Safety</h1><p className="mt-0.5 text-xs text-text-muted">10 pemeriksaan operasional: backup, drift, biaya, webhook, dan performa.</p></div>
         <div className="flex items-center gap-2"><Button variant="secondary" size="sm" onClick={snapshot}>Snapshot config</Button><span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted">{new Date(data.generatedAt).toLocaleString()}</span></div>
       </div>
       {notice ? <p className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">{notice}</p> : null}
@@ -92,39 +92,29 @@ export default function GovernancePage() {
           <Row label="Updated" value={data.comboInventory.latestUpdatedAt ? new Date(data.comboInventory.latestUpdatedAt).toLocaleString() : "—"} />
         </Panel>
 
-        <Panel title="5. Circuit / cooldown" hint={`${data.circuit.length} koneksi`}>
-          {data.circuit.length === 0 ? <p className="text-xs text-text-muted">Tidak ada koneksi 429/cooldown.</p> : data.circuit.slice(0, 5).map((row) => <Row key={row.id} label={row.name} value={`${row.state} · ${row.rate429}×429`} tone={row.state === "cooldown" ? "text-amber-600 dark:text-amber-400" : "text-text-main"} />)}
-          <Row label="Health canary" value={`${data.healthRouting?.percent ?? 0}%`} />
-        </Panel>
-
-        <Panel title="6. Rate-limit & timeout advice" hint={`${data.rateAdvice.length} saran`}>
-          {data.rateAdvice.length === 0 ? <p className="text-xs text-text-muted">Tidak ada 429 atau p95 di atas 30s.</p> : data.rateAdvice.map((row) => <div key={row.name} className="border-t border-border/50 py-1 text-[10px]"><div className="font-medium text-text-main">{row.name}</div><div className="text-text-muted">{row.advice} · 429 {row.rate429} · p95 {row.p95 ? Math.round(row.p95) : "—"}ms</div></div>)}
-          {data.timeoutAdvisor.slice(0, 3).map((row) => <Row key={`timeout-${row.name}`} label={`${row.name} timeout`} value={`${Math.round(row.recommendedMs / 1000)}s`} />)}
-        </Panel>
-
-        <Panel title="7. Deprecation & pricing radar" hint="model">
+        <Panel title="5. Deprecation & pricing radar" hint="model">
           {data.deprecations ? <pre className="max-h-24 overflow-auto text-[10px] text-text-muted">{JSON.stringify(data.deprecations).slice(0, 500)}</pre> : <p className="text-xs text-text-muted">Belum ada file `~/.meai/model-deprecations.json`; radar belum memiliki data.</p>}
           {data.priceDiff ? <Row label="Pricing diff" value={`+${data.priceDiff.added?.length || 0} / −${data.priceDiff.removed?.length || 0} / Δ${data.priceDiff.changed?.length || 0}`} /> : <Row label="Pricing diff" value="belum ada snapshot" />}
           <Button variant="ghost" size="xs" onClick={snapshotPricing}>Snapshot pricing</Button>
           {pricingState ? <p className="text-[10px] text-text-muted">{pricingState} model tersimpan.</p> : null}
         </Panel>
 
-        <Panel title="8. Capability coverage" hint={`${data.capabilityCoverage.length} provider`}>
+        <Panel title="6. Capability coverage" hint={`${data.capabilityCoverage.length} provider`}>
           {data.capabilityCoverage.map((row) => <Row key={row.provider} label={row.provider} value={`score ${row.score ?? "—"}`} />)}
         </Panel>
 
-        <Panel title="9. Budget confidence" hint={data.budgetConfidence.confidence}>
+        <Panel title="7. Budget confidence" hint={data.budgetConfidence.confidence}>
           <Row label="Spend hari ini" value={usd(data.budgetConfidence.pacing.spendToday)} />
           <Row label="Projected" value={`${usd(data.budgetConfidence.projectedLow)}–${usd(data.budgetConfidence.projectedHigh)}`} />
           <Row label="Budget" value={data.budgetConfidence.pacing.budget ? usd(data.budgetConfidence.pacing.budget) : "belum diset"} />
           <Row label="Status" value={data.budgetConfidence.pacing.status} tone={data.budgetConfidence.pacing.status === "ok" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"} />
         </Panel>
 
-        <Panel title="10. Cost allocation" hint="per key">
+        <Panel title="8. Cost allocation" hint="per key">
           {data.costAllocation.length === 0 ? <p className="text-xs text-text-muted">Belum ada usage per key.</p> : data.costAllocation.map((row) => <Row key={row.name} label={row.name} value={`${usd(row.cost)} · ${fmt(row.requests)} req`} />)}
         </Panel>
 
-        <Panel title="11. Alert webhook" hint={data.webhook.configured ? "configured" : "not configured"}>
+        <Panel title="9. Alert webhook" hint={data.webhook.configured ? "configured" : "not configured"}>
           <Row label="Status" value={data.webhook.configured ? "aktif" : "belum diset"} tone={data.webhook.configured ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"} />
           <Row label="Host" value={data.webhook.urlHost || "—"} />
           <p className="text-[10px] text-text-muted">Set `alertWebhookUrl` di Settings untuk mengaktifkan.</p>
@@ -132,7 +122,7 @@ export default function GovernancePage() {
           {webhookResult ? <p className="text-[10px] text-text-muted">{webhookResult.ok ? `HTTP ${webhookResult.status}` : webhookResult.error}</p> : null}
         </Panel>
 
-        <Panel title="12. Performance & storage" hint="snapshot">
+        <Panel title="10. Performance & storage" hint="snapshot">
           <Row label="DB size" value={bytes(data.performance.dbBytes)} />
           <Row label="Usage rows" value={fmt(data.performance.usageRows)} />
           <Row label="Quota rows" value={fmt(data.performance.quotaRows)} />
