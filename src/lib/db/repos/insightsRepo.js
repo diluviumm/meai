@@ -74,19 +74,21 @@ function addBucket(map, key) {
   return map[key];
 }
 
-export async function getInsights({ hours = WINDOW_HOURS } = {}) {
+export async function getInsights({ hours = WINDOW_HOURS, apiKey = null } = {}) {
   const windowHours = Math.max(1, Math.min(168, Number(hours) || WINDOW_HOURS));
   const db = await getAdapter();
   const since = new Date(Date.now() - windowHours * 3_600_000).toISOString();
+  const keyClause = apiKey ? " AND apiKey = ?" : "";
+  const keyArgs = apiKey ? [apiKey] : [];
   const rows = db.all(
     `SELECT timestamp, provider, model, connectionId, apiKey, status, cost, promptTokens, completionTokens, tokens, meta
-     FROM usageHistory WHERE timestamp >= ? ORDER BY timestamp DESC`,
-    [since],
+     FROM usageHistory WHERE timestamp >= ?${keyClause} ORDER BY timestamp DESC`,
+    [since, ...keyArgs],
   );
   const longRows = db.all(
-    `SELECT timestamp, provider, model, connectionId, status, cost, promptTokens, completionTokens, tokens, meta
-     FROM usageHistory WHERE timestamp >= ? ORDER BY timestamp DESC`,
-    [new Date(Date.now() - 28 * 86_400_000).toISOString()],
+    `SELECT timestamp, provider, model, connectionId, apiKey, status, cost, promptTokens, completionTokens, tokens, meta
+     FROM usageHistory WHERE timestamp >= ?${keyClause} ORDER BY timestamp DESC`,
+    [new Date(Date.now() - 28 * 86_400_000).toISOString(), ...keyArgs],
   );
 
   const connections = await getProviderConnections();

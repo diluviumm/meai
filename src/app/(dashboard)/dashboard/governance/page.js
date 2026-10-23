@@ -86,6 +86,7 @@ export default function GovernancePage() {
 
         <Panel title="5. Circuit / cooldown" hint={`${data.circuit.length} koneksi`}>
           {data.circuit.length === 0 ? <p className="text-xs text-text-muted">Tidak ada koneksi 429/cooldown.</p> : data.circuit.slice(0, 5).map((row) => <Row key={row.id} label={row.name} value={`${row.state} · ${row.rate429}×429`} tone={row.state === "cooldown" ? "text-amber-600 dark:text-amber-400" : "text-text-main"} />)}
+          <Row label="Health canary" value={`${data.healthRouting?.percent ?? 0}%`} />
         </Panel>
 
         <Panel title="6. Rate-limit & timeout advice" hint={`${data.rateAdvice.length} saran`}>

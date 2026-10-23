@@ -103,6 +103,7 @@ export async function getGovernance() {
       names: combos.map((combo) => combo.name),
     },
     circuit,
+    healthRouting: readJson("health-routing.json"),
     rateAdvice,
     timeoutAdvisor,
     deprecations: readJson("model-deprecations.json"),
