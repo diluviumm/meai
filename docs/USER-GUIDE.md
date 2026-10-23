@@ -230,6 +230,36 @@ alih-alih mengosongkan kartu.
   fallback; urutan disimpan saat combo disimpan. Wildcard literal `provider/*`
   tidak dipakai — resolver combo memakai nama model eksplisit.
 
+### 7.8 Insights & Health
+
+- Buka **Insights & Health** di sidebar (`/dashboard/insights`).
+- **Health score** 0–100 menggabungkan success rate, rasio 429, dan p95
+  latency per koneksi; nilainya advisory, bukan pemutus request.
+- **Leaderboard** menampilkan request, success, p95, cost per 1k token, dan
+  cache hit per model. **Rate-limit heatmap** menampilkan 429 per key per jam.
+- **Burn anomaly** membandingkan biaya satu jam terakhir dengan rata-rata enam
+  jam sebelumnya; status `flagged` berarti lonjakan >1.8×.
+- **Combo simulator** menjalankan dry-run urutan fallback, health score, dan
+  compatibility tanpa mengirim request ke provider.
+- **Automation status** membaca state nyata: quota compaction, restore drill,
+  catalog diff, dan WCAG audit. Tombol **Compact now** menjalankan kompaksi
+  quota secara manual.
+- **Quiet hours** menyimpan `settings.alertQuietHours`; timer budget tidak
+  mengirim notifikasi di dalam jendela tersebut.
+- OpenAPI schema: `GET /api/openapi`; endpoint analytics:
+  `GET /api/insights?hours=24`, `POST /api/combos/simulate`,
+  `POST /api/maintenance/quota-compaction`.
+
+### 7.9 Otomasi baru
+
+| Timer | Jadwal | Fungsi |
+|---|---|---|
+| `meai-quota-history-sample.timer` | 15 menit | sampler quota lintas device (marker opt-in) |
+| `meai-budget.timer` | 30 menit | alert budget global/koneksi, menghormati quiet hours |
+| `meai-db-housekeeping.timer` | Minggu 04:20 | WAL checkpoint + `PRAGMA optimize` |
+| `meai-restore-drill.timer` | tanggal 1 04:40 | backup SQLite + integrity + baca `quotaHistory` |
+| `meai-catalog-watch.timer` | harian 06:00 | snapshot `/v1/models` + diff added/removed |
+
 ---
 
 ## 8. CodeBuddy Intl: 11128 vs 11140

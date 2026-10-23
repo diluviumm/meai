@@ -110,9 +110,9 @@ export default function InsightsPage() {
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Kpi label="Requests" value={fmtInt(data.totals.requests)} hint="usageHistory 24 jam" />
-        <Kpi label="Success" value={pct(data.totals.successRate)} hint="2xx–3xx" tone="text-emerald-500" />
+        <Kpi label="Success" value={pct(data.totals.successRate)} hint="2xx–3xx" tone="text-emerald-600 dark:text-emerald-400" />
         <Kpi label="Cache hit" value={pct(cacheRate)} hint="cached / prompt token" tone="text-primary" />
-        <Kpi label="Anomaly" value={data.anomaly.flagged ? `${data.anomaly.ratio}×` : "normal"} hint={`${fmtUsd(data.anomaly.currentHourCost)} jam ini`} tone={data.anomaly.flagged ? "text-amber-500" : "text-emerald-500"} />
+        <Kpi label="Anomaly" value={data.anomaly.flagged ? `${data.anomaly.ratio}×` : "normal"} hint={`${fmtUsd(data.anomaly.currentHourCost)} jam ini`} tone={data.anomaly.flagged ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
