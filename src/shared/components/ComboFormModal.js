@@ -9,7 +9,7 @@ import ModelSelectModal from "./ModelSelectModal";
 const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;
 
 // Inline editable model item
-function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown, onRemove }) {
+function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown, onRemove, onDragStart, onDragOver, onDrop, onDragEnd, dragging }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(model);
   const commit = () => {
@@ -23,7 +23,15 @@ function ModelItem({ index, model, isFirst, isLast, onEdit, onMoveUp, onMoveDown
     if (e.key === "Escape") { setDraft(model); setEditing(false); }
   };
   return (
-    <div className="group flex min-w-0 items-center gap-1.5 rounded-md bg-black/[0.02] px-2 py-1 transition-colors hover:bg-black/[0.04] dark:bg-white/[0.02] dark:hover:bg-white/[0.04]">
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`group flex min-w-0 items-center gap-1.5 rounded-md bg-black/[0.02] px-2 py-1 transition-colors hover:bg-black/[0.04] dark:bg-white/[0.02] dark:hover:bg-white/[0.04] ${dragging ? "opacity-40" : ""}`}
+    >
+      <span className="material-symbols-outlined shrink-0 cursor-grab text-text-muted/50 text-[12px]" title="Drag to reorder">drag_indicator</span>
       <span className="text-[10px] font-medium text-text-muted w-3 text-center shrink-0">{index + 1}</span>
       {editing ? (
         <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={handleKeyDown}
@@ -58,6 +66,7 @@ export default function ComboFormModal({ isOpen, combo, onClose, onSave, activeP
   const [name, setName] = useState(initialName);
   const [models, setModels] = useState(combo?.models || []);
   const [showModelSelect, setShowModelSelect] = useState(false);
+  const [draggingIndex, setDraggingIndex] = useState(null);
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState("");
   const [modelAliases, setModelAliases] = useState({});
@@ -143,6 +152,19 @@ export default function ComboFormModal({ isOpen, combo, onClose, onSave, activeP
                 {models.map((model, index) => (
                   <ModelItem key={index} index={index} model={model}
                     isFirst={index === 0} isLast={index === models.length - 1}
+                    dragging={draggingIndex === index}
+                    onDragStart={() => setDraggingIndex(index)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => {
+                      if (draggingIndex !== null && draggingIndex !== index) {
+                        const next = [...models];
+                        const [moved] = next.splice(draggingIndex, 1);
+                        next.splice(index, 0, moved);
+                        setModels(next);
+                      }
+                      setDraggingIndex(null);
+                    }}
+                    onDragEnd={() => setDraggingIndex(null)}
                     onEdit={(v) => { const a = [...models]; a[index] = v; setModels(a); }}
                     onMoveUp={() => handleMoveUp(index)}
                     onMoveDown={() => handleMoveDown(index)}

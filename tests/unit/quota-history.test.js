@@ -42,6 +42,9 @@ describe("quota history + burn-rate forecast", () => {
     expect(forecast.burnPerDay).toBe(1200);
     expect(forecast.daysLeft).toBeCloseTo(1 / 3, 5);
     expect(forecast.short).toContain("h left");
+    expect(forecast.binding).toBe("exhaustion");
+    expect(["low", "medium", "high"]).toContain(forecast.confidence);
+    expect(forecast.renewalAware.exhaustInDays).toBeCloseTo(1 / 3, 5);
   });
 
   it("prefers the reset countdown when reset happens before the forecast limit", () => {
@@ -57,6 +60,7 @@ describe("quota history + burn-rate forecast", () => {
     );
     expect(forecast.daysLeft).toBeGreaterThan(1);
     expect(forecast.short).toContain("resets");
+    expect(forecast.binding).toBe("reset");
   });
 
   it("uses 'expires' for a non-recurring pack", () => {
@@ -90,6 +94,23 @@ describe("quota history + burn-rate forecast", () => {
         60_000,
       ),
     ).toBeNull();
+  });
+
+  it("raises forecast confidence when enough samples span a useful window", () => {
+    const now = 10 * HOUR;
+    const samples = Array.from({ length: 11 }, (_, index) => ({
+      t: index * 12 * 60_000,
+      used: index * 5,
+      pct: 100 - index * 0.5,
+    }));
+    const forecast = forecastQuota(
+      { used: 50, total: 500, resetAt: new Date(now + 30 * 24 * HOUR).toISOString() },
+      samples,
+      now,
+    );
+    expect(forecast.confidence).toBe("high");
+    expect(forecast.samples).toBe(11);
+    expect(forecast.title).toContain("keyakinan high");
   });
 
   it("produces an SVG polyline for the sparkline", () => {

@@ -293,6 +293,19 @@ export default function UsageStats({
   const queryKey = period === "custom"
     ? `period=custom&from=${encodeURIComponent(customFrom)}&to=${encodeURIComponent(customTo)}`
     : `period=${period}`;
+  const periodDays = (() => {
+    if (period === "today" || period === "24h") return 1;
+    if (period === "7d") return 7;
+    if (period === "30d") return 30;
+    if (period === "custom" && customFrom && customTo) {
+      const from = Date.parse(customFrom);
+      const to = Date.parse(customTo);
+      if (Number.isFinite(from) && Number.isFinite(to) && to >= from) {
+        return Math.max(1, Math.round((to - from) / 86_400_000) + 1);
+      }
+    }
+    return 30;
+  })();
   // Ronde-39: jendela periode sebelumnya utk delta kartu KPI. Hanya berubah
   // bersama queryKey (atau pergantian hari saat refresh), sehingga menambahkannya
   // ke dependensi tidak memicu siklus fetch ekstra.
@@ -605,7 +618,7 @@ export default function UsageStats({
         <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
           <UsageDonuts stats={stats} />
           <ProviderBarChart byProvider={stats.byProvider} />
-          <TopModelsChart byModel={stats.byModel} />
+          <TopModelsChart byModel={stats.byModel} periodDays={periodDays} />
         </div>
       )}
 

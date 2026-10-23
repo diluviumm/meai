@@ -1291,6 +1291,13 @@ export default function ProviderLimits() {
           </span>
         )}
         <Link
+          href="/dashboard/quota/history"
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-muted transition-colors hover:border-primary/30 hover:text-primary"
+        >
+          <span className="material-symbols-outlined text-[14px]">history</span>
+          Riwayat
+        </Link>
+        <Link
           href="/dashboard/guide#quota"
           className="ml-auto inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15"
         >

@@ -194,6 +194,39 @@ alih-alih mengosongkan kartu.
 - Forecast adalah estimasi pemakaian, bukan janji provider; hover label untuk
   melihat burn/day, jumlah sampel, dan rentang jam.
 
+### 7.6 Riwayat quota, purge, dan budget per koneksi
+
+- Buka **Quota → Riwayat** (`/dashboard/quota/history`). Pilih koneksi utama,
+  koneksi pembanding, rentang **1 jam / 24 jam / 7 hari**, dan nama kuota.
+  Grafik menampilkan **% sisa**; hover titik untuk waktu, sisa %, dan used/total.
+- Forecast kini menyertakan **confidence** `low`/`medium`/`high` (jumlah sampel +
+  rentang) dan **binding**: `resets`/`expires` jika window provider lebih dulu,
+  atau `≈Nd left` jika proyeksi habis lebih dulu.
+- **Purge** pada kartu koneksi menghapus baris `quotaHistory` koneksi itu saja;
+  kuota provider tidak berubah. Retensi bisa diatur lewat environment
+  `MEAI_QUOTA_HISTORY_RETENTION_DAYS` (1–90, default 7).
+- **Budget per koneksi** menyimpan ambang USD/hari di
+  `settings.costBudgetByConnection`. Timer budget membandingkan
+  `/api/usage/stats?period=today` dan mengirim satu alert per level
+  (`mendekati` 80%, `lewat` 100%) per koneksi per hari. Budget adalah peringatan,
+  bukan pemutus request.
+- **Sampler latar belakang** bersifat opt-in. Buat marker
+  `~/.hermes/state/meai-quota-sampler.enabled`; timer 15 menit memanggil
+  `/api/usage/<id>?force=1` untuk semua koneksi aktif, dengan jeda 2 detik antar
+  provider. Tanpa marker, timer hanya mencatat `disabled` dan tidak memanggil
+  provider.
+
+### 7.7 Model picker dan urutan combo
+
+- Preset picker: **Free** (`free`), **No embed** (`!embed`), **Claude -haiku**
+  (`claude -haiku`). Preset hanya mengisi query pencarian.
+- Tekan `/` untuk fokus pencarian, `Escape` untuk mengosongkan query.
+  **Shift+click** memilih rentang model yang terlihat; **+ all** di header
+  provider menambahkan semua model provider yang belum terpilih.
+- Di editor combo, drag handle `drag_indicator` atau tombol ↑/↓ mengubah urutan
+  fallback; urutan disimpan saat combo disimpan. Wildcard literal `provider/*`
+  tidak dipakai — resolver combo memakai nama model eksplisit.
+
 ---
 
 ## 8. CodeBuddy Intl: 11128 vs 11140

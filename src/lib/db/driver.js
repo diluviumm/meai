@@ -74,6 +74,19 @@ async function initAdapter() {
 
   const { runMigrationOnce } = await import("./migrate.js");
   await runMigrationOnce(adapter);
+
+  // Ronde-56: safe SQLite housekeeping. WAL checkpoint keeps the -wal file
+  // bounded and PRAGMA optimize refreshes planner statistics. Both are
+  // non-blocking and safe to run on every boot; VACUUM is deliberately not run
+  // here because it takes an exclusive lock and can stall live requests.
+  if (process.env.MEAI_DB_HOUSEKEEPING !== "0") {
+    try {
+      adapter.run("PRAGMA wal_checkpoint(TRUNCATE)");
+      adapter.run("PRAGMA optimize");
+    } catch (error) {
+      console.warn(`[DB] housekeeping skipped: ${error.message}`);
+    }
+  }
   return adapter;
 }
 

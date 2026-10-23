@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import Modal from "./Modal";
 import ProviderIcon from "./ProviderIcon";
@@ -132,6 +132,28 @@ export default function ModelSelectModal({
 
   const { getCaps } = useModelCaps();
   const [searchQuery, setSearchQuery] = useState("");
+  const [lastSelectedValue, setLastSelectedValue] = useState(null);
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        const tag = event.target?.tagName;
+        if (tag !== "INPUT" && tag !== "TEXTAREA") {
+          event.preventDefault();
+          searchInputRef.current?.focus();
+        }
+      }
+      if (event.key === "Escape" && searchQuery) {
+        event.preventDefault();
+        setSearchQuery("");
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, searchQuery]);
+
   const [combos, setCombos] = useState([]);
   const [providerNodes, setProviderNodes] = useState([]);
   const [customModels, setCustomModels] = useState([]);
@@ -600,15 +622,44 @@ export default function ModelSelectModal({
     }
   };
 
-  const handleSelect = (model) => {
+  const handleSelectProviderGroup = (group) => {
+    const models = group.models.filter((m) => !m.isPlaceholder);
+    const unadded = models.filter((m) => !addedModelValues.includes(m.value));
+    if (unadded.length === 0) return;
+    if (onSelectBatch) onSelectBatch(unadded);
+    else unadded.forEach((m) => onSelect(m));
+  };
+
+  const handleSelect = (model, event = null) => {
     const value = model?.value || model?.name || model;
     const isAdded = addedModelValues.includes(value);
+
+    // Shift-click selects the range between the last clicked model and this one.
+    if (event?.shiftKey && lastSelectedValue) {
+      const start = visibleModels.findIndex((m) => (m.value || m.name) === lastSelectedValue);
+      const end = visibleModels.findIndex((m) => (m.value || m.name) === value);
+      if (start >= 0 && end >= 0) {
+        const range = visibleModels.slice(Math.min(start, end), Math.max(start, end) + 1);
+        if (isAdded && onDeselectBatch) {
+          onDeselectBatch(range);
+        } else if (!isAdded && onSelectBatch) {
+          onSelectBatch(range);
+        } else if (isAdded && onDeselect) {
+          range.forEach((m) => onDeselect(m));
+        } else if (!isAdded) {
+          range.forEach((m) => onSelect(m));
+        }
+        setLastSelectedValue(value);
+        return;
+      }
+    }
 
     if (isAdded && onDeselect) {
       onDeselect(model);
     } else {
       onSelect(model);
     }
+    setLastSelectedValue(value);
 
     if (closeOnSelect) {
       onClose();
@@ -645,6 +696,7 @@ export default function ModelSelectModal({
             search
           </span>
           <input
+            ref={searchInputRef}
             type="text"
             placeholder={
               allowProviderWildcard
@@ -677,6 +729,32 @@ export default function ModelSelectModal({
               </button>
             )}
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1 px-1">
+          <span className="text-[10px] text-text-muted mr-0.5">Preset:</span>
+          {[
+            { label: "Free", query: "free", title: "Model dengan nama/id free" },
+            { label: "No embed", query: "!embed", title: "Kecualikan model embedding" },
+            { label: "Claude -haiku", query: "claude -haiku", title: "Claude tanpa Haiku" },
+          ].map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => setSearchQuery(preset.query)}
+              title={preset.title}
+              className={`rounded-full border px-2 py-0.5 text-[10px] transition-colors ${
+                searchQuery === preset.query
+                  ? "border-primary/40 bg-primary/15 text-primary"
+                  : "border-border bg-surface text-text-muted hover:border-primary/30 hover:text-primary"
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
+          <span className="ml-auto text-[10px] text-text-muted hidden sm:inline" title="Keyboard shortcut: / fokus pencarian, Shift+click pilih rentang">
+            / cari · Shift+click rentang
+          </span>
         </div>
 
         {!closeOnSelect && visibleModels.length > 0 && (
@@ -794,6 +872,15 @@ export default function ModelSelectModal({
                 <span className="text-[10px] text-text-muted">
                   ({group.models.length})
                 </span>
+                <button
+                  type="button"
+                  onClick={() => handleSelectProviderGroup(group)}
+                  title={`Add all ${group.name} models that are not selected yet`}
+                  aria-label={`Add all ${group.name} models`}
+                  className="ml-auto rounded-md border border-transparent px-1.5 py-0.5 text-[10px] font-medium text-text-muted transition-colors hover:border-primary/20 hover:bg-primary/10 hover:text-primary"
+                >
+                  + all
+                </button>
               </div>
 
             <div className="flex flex-wrap gap-1.5">
@@ -803,7 +890,7 @@ export default function ModelSelectModal({
                 return (
                   <button
                     key={model.value}
-                    onClick={() => handleSelect(model)}
+                    onClick={(event) => handleSelect(model, event)}
                     title={isPlaceholder ? "Select to pre-fill, then edit model ID in the input" : undefined}
                     className={`
                       px-2 py-1 rounded-xl text-xs font-medium transition-all border hover:cursor-pointer

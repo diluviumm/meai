@@ -34,7 +34,7 @@ const fmtCost = (n) => {
   return "$0";
 };
 
-export default function TopModelsChart({ byModel }) {
+export default function TopModelsChart({ byModel, periodDays = 1 }) {
   const [viewMode, setViewMode] = useState("tokens");
 
   const chartData = useMemo(() => {
@@ -53,6 +53,10 @@ export default function TopModelsChart({ byModel }) {
 
   const fmt = viewMode === "tokens" ? fmtTokens : viewMode === "cost" ? fmtCost : String;
   const label = viewMode === "tokens" ? "Tokens" : viewMode === "cost" ? "Cost (USD)" : "Requests";
+  const safeDays = Math.max(1, Number(periodDays) || 1);
+  const totalCost = chartData.reduce((sum, row) => sum + (Number(row.cost) || 0), 0);
+  const costPerDay = totalCost / safeDays;
+  const projected30 = costPerDay * 30;
 
   return (
     <Card className="flex min-w-0 flex-col gap-3 p-3 sm:p-4">
@@ -81,6 +85,19 @@ export default function TopModelsChart({ byModel }) {
           </button>
         </div>
       </div>
+
+      {viewMode === "cost" && (
+        <div className="grid grid-cols-2 gap-2 text-[10px]">
+          <div className="rounded-lg border border-border/60 bg-bg-subtle px-2 py-1.5">
+            <div className="text-text-muted">Burn / day</div>
+            <div className="font-semibold text-text-main">{fmtCost(costPerDay)}</div>
+          </div>
+          <div className="rounded-lg border border-border/60 bg-bg-subtle px-2 py-1.5">
+            <div className="text-text-muted">Projected / 30d</div>
+            <div className="font-semibold text-text-main">{fmtCost(projected30)}</div>
+          </div>
+        </div>
+      )}
 
       {!chartData.length ? (
         <div className="h-44 flex items-center justify-center text-text-muted text-sm">No model usage yet</div>
@@ -137,4 +154,5 @@ export default function TopModelsChart({ byModel }) {
 
 TopModelsChart.propTypes = {
   byModel: PropTypes.object,
+  periodDays: PropTypes.number,
 };

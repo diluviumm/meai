@@ -153,6 +153,71 @@ const FEATURES = [
     href: "/dashboard/quota",
   },
   {
+    id: "quota-history",
+    category: "monitor",
+    icon: "timeline",
+    title: "Riwayat quota & burn forecast",
+    summary:
+      "Halaman Riwayat menampilkan sampel SQLite lintas device, filter koneksi, zoom 1 jam / 24 jam / 7 hari, dan perbandingan dua koneksi.",
+    steps: [
+      "Buka Quota Tracker → Riwayat (atau /dashboard/quota/history).",
+      "Pilih koneksi utama; pilih koneksi kedua untuk membandingkan dua garis.",
+      "Pilih rentang dan nama kuota. Arahkan kursor ke titik untuk melihat waktu, sisa %, dan used/total.",
+      "Baca label forecast: ≈Nd left = habis, resets/expires = window reset lebih dulu. Keyakinan low/medium/high dihitung dari jumlah sampel dan rentang waktu.",
+      "Gunakan Purge pada kartu koneksi untuk menghapus riwayat koneksi itu; retensi default 7 hari dan dapat diubah lewat MEAI_QUOTA_HISTORY_RETENTION_DAYS.",
+    ],
+    tip: "Sampler latar belakang bersifat opt-in: buat ~/.hermes/state/meai-quota-sampler.enabled agar timer 15 menit mengisi riwayat tanpa dashboard terbuka. Tanpa marker, tidak ada panggilan provider tambahan.",
+    href: "/dashboard/quota/history",
+  },
+  {
+    id: "budget",
+    category: "monitor",
+    icon: "payments",
+    title: "Budget per koneksi / API key",
+    summary:
+      "Setiap koneksi (yang membawa satu API key upstream) bisa punya ambang biaya harian sendiri; alert dikirim saat 80% dan 100%.",
+    steps: [
+      "Buka Quota → Riwayat → Budget per koneksi.",
+      "Isi nominal USD per hari pada koneksi yang ingin dipantau, lalu Simpan.",
+      "Alert memakai /api/usage/stats?period=today dan dikirim ke grup WA oleh timer budget; satu alert per level per hari.",
+      "Kosongkan input lalu Simpan untuk menghapus ambang.",
+    ],
+    tip: "Budget global lama (costBudgetDaily) tetap berjalan. Budget koneksi tidak memotong request; ini peringatan, bukan hard limit.",
+    href: "/dashboard/quota/history",
+  },
+  {
+    id: "picker",
+    category: "integrasi",
+    icon: "checklist",
+    title: "Model picker: preset, keyboard, rentang",
+    summary:
+      "Pemilih model punya preset Free / No embed / Claude -haiku, pencarian regex dan negasi, shortcut /, serta Shift+click untuk memilih rentang.",
+    steps: [
+      "Klik preset untuk mengisi query dengan satu klik; klik lagi query yang sama untuk kembali mengetik manual.",
+      "Tekan / di mana pun di modal untuk fokus ke kotak pencarian; Escape mengosongkan query.",
+      "Klik model pertama, lalu Shift+click model terakhir untuk memilih semua model di antaranya.",
+      "Gunakan + all pada header provider untuk menambahkan semua model provider itu yang belum terpilih.",
+    ],
+    tip: "Preset hanya mengubah query pencarian; tidak mengubah model yang sudah dipilih. Shift+click memakai urutan model yang terlihat setelah filter.",
+    href: "/dashboard/combos",
+  },
+  {
+    id: "combo-reorder",
+    category: "integrasi",
+    icon: "reorder",
+    title: "Reorder combo: drag atau tombol",
+    summary:
+      "Urutan model dalam combo menentukan fallback. Drag handle di kiri baris, atau pakai tombol naik/turun untuk perubahan satu langkah.",
+    steps: [
+      "Buka Combos → edit combo.",
+      "Tarik ikon drag_indicator ke posisi baru; urutan langsung berubah.",
+      "Alternatif presisi: tombol ↑/↓. Urutan disimpan saat combo disimpan.",
+    ],
+    tip: "Drag tidak menyalin model; ia hanya memindahkan baris. Model duplikat tetap ditolak.",
+    href: "/dashboard/combos",
+  },
+
+  {
     id: "cli-tools",
     category: "integrasi",
     icon: "terminal",
@@ -249,6 +314,30 @@ const FEATURES = [
 ];
 
 const FAQ = [
+  {
+    q: "Apa arti confidence low/medium/high pada forecast quota?",
+    a: "Confidence dihitung dari jumlah sampel dan rentang waktu: high jika ≥10 sampel dan ≥2 jam, medium jika ≥4 sampel dan ≥30 menit, selain itu low. Forecast tetap ditampilkan jika data cukup, tetapi label confidence mengingatkan bahwa estimasi burn-rate bisa berubah. Reset/expiry yang lebih dulu akan mengalahkan proyeksi habis.",
+  },
+  {
+    q: "Kenapa riwayat quota kosong padahal dashboard pernah dibuka?",
+    a: "Sampel ditulis saat route /api/usage dipanggil. Jika dashboard ditutup, tidak ada panggilan baru kecuali sampler latar belakang diaktifkan. Buat file ~/.hermes/state/meai-quota-sampler.enabled; timer 15 menit akan mengambil sampel dari semua koneksi aktif tanpa membuka browser. Tanpa marker, sampler sengaja tidak melakukan panggilan provider.",
+  },
+  {
+    q: "Apakah Purge menghapus data quota provider?",
+    a: "Tidak. Purge hanya menghapus baris riwayat lokal (tabel quotaHistory) untuk satu koneksi; kuota, bonus pack, dan koneksi upstream tidak berubah. Pengambilan quota berikutnya akan membuat baris baru.",
+  },
+  {
+    q: "Apakah budget per koneksi memblokir request?",
+    a: "Tidak. Budget per koneksi adalah peringatan: bar dan notifikasi saat 80% / 100%, bukan hard limit. Budget global costBudgetDaily juga tetap berupa peringatan. Untuk menghentikan pemakaian, nonaktifkan koneksi atau hapus key di provider.",
+  },
+  {
+    q: "Bagaimana memilih semua model dari satu provider?",
+    a: "Di model picker, klik + all pada header provider. Ini menambahkan semua model provider yang terlihat dan belum dipilih. Wildcard literal provider/* tidak dipakai karena resolver combo memakai nama model eksplisit; + all memberi hasil yang sama tanpa entri wildcard yang tidak bisa di-resolve.",
+  },
+  {
+    q: "Apakah drag reorder combo mengubah fallback?",
+    a: "Ya. Urutan baris adalah urutan percobaan: model paling atas dicoba lebih dulu, lalu turun ke bawah. Drag dan tombol ↑/↓ mengubah urutan yang sama; simpan combo agar perubahan berlaku.",
+  },
   {
     q: "Apakah Round Robin Sticky itu fallback API key?",
     a: "Bukan. Round Robin = pembagian beban bergiliran. Fallback = perpindahan otomatis saat key gagal (limit/401/5xx), dan fallback selalu aktif di strategi apa pun. Untuk perilaku 'key 1 limit → key 2', cukup tambahkan beberapa koneksi; tidak perlu menyalakan Round Robin.",

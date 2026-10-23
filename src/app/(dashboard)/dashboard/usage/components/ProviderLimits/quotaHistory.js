@@ -73,21 +73,33 @@ export function forecastQuota(quota, samples, now = Date.now()) {
 
   let short = "flat";
   let tone = "text-text-muted";
+  let binding = "flat";
   if (daysLeft != null) {
     if (resetDays != null && resetDays > 0 && resetDays < daysLeft) {
       short = `${resetWord} ${resetDays < 1 ? "<1d" : `in ${Math.ceil(resetDays)}d`}`;
       tone = "text-text-muted";
+      binding = "reset";
     } else if (daysLeft < 1) {
       short = `≈${Math.max(1, Math.round(daysLeft * 24))}h left`;
       tone = "text-red-600 dark:text-red-400";
+      binding = "exhaustion";
     } else if (daysLeft < 7) {
       short = `≈${daysLeft.toFixed(1)}d left`;
       tone = "text-amber-600 dark:text-amber-400";
+      binding = "exhaustion";
     } else {
       short = `≈${Math.floor(daysLeft)}d left`;
       tone = "text-emerald-600 dark:text-emerald-400";
+      binding = "exhaustion";
     }
   }
+
+  const confidence =
+    clean.length >= 10 && elapsedHours >= 2
+      ? "high"
+      : clean.length >= 4 && elapsedHours >= 0.5
+        ? "medium"
+        : "low";
 
   return {
     samples: clean.length,
@@ -95,11 +107,21 @@ export function forecastQuota(quota, samples, now = Date.now()) {
     burnPerDay,
     daysLeft,
     resetDays,
+    timeToExhaustionDays: daysLeft,
+    binding,
+    confidence,
+    renewalAware: {
+      resetInDays: resetDays,
+      exhaustInDays: daysLeft,
+      binding,
+    },
     short,
     tone,
     title:
       `Burn rate: ${burnPerDay.toFixed(2)} ${quota.unit || "units"}/day` +
       (daysLeft != null ? ` · sisa ≈ ${daysLeft.toFixed(1)} hari` : "") +
+      (resetDays != null ? ` · reset/expiry ${resetDays.toFixed(1)} hari` : "") +
+      ` · keyakinan ${confidence}` +
       ` · ${clean.length} sampel / ${elapsedHours.toFixed(1)} jam (riwayat tersimpan)`,
   };
 }

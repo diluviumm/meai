@@ -1,5 +1,5 @@
 import { getProviderConnectionById } from "@/lib/localDb";
-import { getQuotaHistory } from "@/lib/db";
+import { clearQuotaHistory, getQuotaHistory } from "@/lib/db";
 
 // GET /api/usage/[connectionId]/history?hours=24&limit=240
 // Cross-device quota samples recorded by the usage route (one row per quota/minute).
@@ -28,5 +28,21 @@ export async function GET(request, { params }) {
   } catch (error) {
     console.error("[Quota History API]", error);
     return Response.json({ error: error.message || "Failed to load quota history" }, { status: 500 });
+  }
+}
+
+// DELETE /api/usage/[connectionId]/history — purge this connection's history.
+export async function DELETE(request, { params }) {
+  try {
+    const { connectionId } = await params;
+    const connection = await getProviderConnectionById(connectionId);
+    if (!connection) {
+      return Response.json({ error: "Connection not found" }, { status: 404 });
+    }
+    const deleted = await clearQuotaHistory(connectionId);
+    return Response.json({ ok: true, connectionId, deleted });
+  } catch (error) {
+    console.error("[Quota History API] purge", error);
+    return Response.json({ error: error.message || "Failed to purge quota history" }, { status: 500 });
   }
 }

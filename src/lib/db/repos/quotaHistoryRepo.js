@@ -1,6 +1,16 @@
 import { getAdapter } from "../driver.js";
 
 export const QUOTA_HISTORY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function quotaHistoryRetentionDays() {
+  const raw = Number(process.env.MEAI_QUOTA_HISTORY_RETENTION_DAYS);
+  if (!Number.isFinite(raw)) return 7;
+  return Math.max(1, Math.min(90, Math.round(raw)));
+}
+
+export function quotaHistoryRetentionMs() {
+  return quotaHistoryRetentionDays() * 24 * 60 * 60 * 1000;
+}
 export const QUOTA_HISTORY_DEFAULT_HOURS = 24;
 export const QUOTA_HISTORY_DEFAULT_LIMIT = 240;
 
@@ -68,7 +78,7 @@ export async function recordQuotaSnapshot(connectionId, quotas, now = Date.now()
 
     // Hourly retention sweep; keeps the table bounded without deleting on every fetch.
     if (now - lastPruneAt >= 60 * 60 * 1000) {
-      db.run(`DELETE FROM quotaHistory WHERE sampledAt < ?`, [now - QUOTA_HISTORY_RETENTION_MS]);
+      db.run(`DELETE FROM quotaHistory WHERE sampledAt < ?`, [now - quotaHistoryRetentionMs()]);
       lastPruneAt = now;
     }
   });
