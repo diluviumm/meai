@@ -34,8 +34,15 @@ export async function GET(request) {
       current.cost += Number(row.cost) || 0;
       keyRows.set(keyName, current);
     }
+    let probeCost = 0;
+    for (const [name, row] of keyRows) {
+      if (name === "__live_probe__" || name.startsWith("sk-probe")) {
+        probeCost += row.cost;
+        keyRows.delete(name);
+      }
+    }
     const rows = [...keyRows.values()].sort((a, b) => b.cost - a.cost);
-    const totalUsd = Number(stats.totalCost) || 0;
+    const totalUsd = Math.max(0, (Number(stats.totalCost) || 0) - probeCost);
     const taxUsd = totalUsd * (taxPct / 100);
     const grandUsd = totalUsd + taxUsd;
     const generated = new Date();

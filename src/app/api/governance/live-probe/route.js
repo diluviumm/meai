@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createApiKey, deleteApiKey } from "@/lib/localDb";
+import { createApiKey, getApiKeys, updateApiKey } from "@/lib/localDb";
 
 export const dynamic = "force-dynamic";
 let running = false;
@@ -17,7 +17,12 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const model = String(body?.model || "").trim().slice(0, 120);
     if (!model) return NextResponse.json({ error: "Model wajib diisi" }, { status: 400 });
-    temp = await createApiKey("live-probe-temp", `probe${Date.now().toString(36)}`);
+    temp = (await getApiKeys()).find((key) => key.name === "__live_probe__");
+    if (temp) {
+      temp = await updateApiKey(temp.id, { isActive: true });
+    } else {
+      temp = await createApiKey("__live_probe__", `probe${Date.now().toString(36)}`);
+    }
     const started = Date.now();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 25_000);
@@ -47,7 +52,7 @@ export async function POST(request) {
   } catch (error) {
     return NextResponse.json({ ok: false, error: error.name === "AbortError" ? "Probe timeout 25s" : error.message }, { status: 500 });
   } finally {
-    if (temp?.id) await deleteApiKey(temp.id).catch(() => {});
+    if (temp?.id) await updateApiKey(temp.id, { isActive: false }).catch(() => {});
     running = false;
   }
 }
