@@ -9,7 +9,7 @@ const PERIODS = new Set(["today", "7d", "30d"]);
 const LABELS = { today: "Hari ini", "7d": "7 hari terakhir", "30d": "30 hari terakhir" };
 
 function idr(value, rate) {
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format((Number(value) || 0) * rate);
+  return `Rp ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format((Number(value) || 0) * rate)}`;
 }
 
 function usd(value) {
@@ -47,7 +47,7 @@ export async function GET(request) {
     const margin = 48;
     let page = pdf.addPage([pageWidth, pageHeight]);
     let y = pageHeight - margin;
-    const text = (value, x, size = 9, color = ink, fontFace = font) => page.drawText(String(value ?? ""), { x, y, size, font: fontFace, color });
+    const text = (value, x, size = 9, color = ink, fontFace = font) => page.drawText(String(value ?? "").replaceAll("→", ">").replaceAll("≥", ">=").replaceAll("≤", "<=").replace(/[^\x20-\x7E]/g, "?"), { x, y, size, font: fontFace, color });
     const money = (value) => idr(value, rate);
     const newPage = () => {
       page = pdf.addPage([pageWidth, pageHeight]);
@@ -110,7 +110,7 @@ export async function GET(request) {
     y -= 12;
     text("PPN bersifat opsional (setting invoiceTaxPct); dokumen ini bukan faktur pajak resmi.", margin, 8, muted);
     y -= 12;
-    text("Label biaya dapat diubah di Governance → Cost allocation.", margin, 8, muted);
+    text("Label biaya dapat diubah di Governance > Cost allocation.", margin, 8, muted);
 
     const pages = pdf.getPages();
     pages.forEach((item, index) => {
