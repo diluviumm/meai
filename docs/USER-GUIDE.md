@@ -193,6 +193,9 @@ alih-alih mengosongkan kartu.
   `resets in Nd` — reset provider lebih otoritatif daripada ekstrapolasi.
 - Forecast adalah estimasi pemakaian, bukan janji provider; hover label untuk
   melihat burn/day, jumlah sampel, dan rentang jam.
+- **Usage → Top Models** kini menampilkan **burn/day** dan proyeksi **30 hari**
+  per model, baik dalam mode **Tokens** maupun **Cost**. Angka memakai periode
+  yang sedang dipilih di halaman Usage; ganti periode untuk melihat laju berbeda.
 
 ### 7.6 Riwayat quota, purge, dan budget per koneksi
 

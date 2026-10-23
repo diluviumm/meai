@@ -57,6 +57,9 @@ export default function TopModelsChart({ byModel, periodDays = 1 }) {
   const totalCost = chartData.reduce((sum, row) => sum + (Number(row.cost) || 0), 0);
   const costPerDay = totalCost / safeDays;
   const projected30 = costPerDay * 30;
+  const totalTokens = chartData.reduce((sum, row) => sum + (Number(row.tokens) || 0), 0);
+  const tokensPerDay = totalTokens / safeDays;
+  const tokensProjected30 = tokensPerDay * 30;
 
   return (
     <Card className="flex min-w-0 flex-col gap-3 p-3 sm:p-4">
@@ -85,6 +88,19 @@ export default function TopModelsChart({ byModel, periodDays = 1 }) {
           </button>
         </div>
       </div>
+
+      {viewMode === "tokens" && (
+        <div className="grid grid-cols-2 gap-2 text-[10px]">
+          <div className="rounded-lg border border-border/60 bg-bg-subtle px-2 py-1.5">
+            <div className="text-text-muted">Token burn / day</div>
+            <div className="font-semibold text-text-main">{fmtTokens(tokensPerDay)}</div>
+          </div>
+          <div className="rounded-lg border border-border/60 bg-bg-subtle px-2 py-1.5">
+            <div className="text-text-muted">Projected / 30d</div>
+            <div className="font-semibold text-text-main">{fmtTokens(tokensProjected30)}</div>
+          </div>
+        </div>
+      )}
 
       {viewMode === "cost" && (
         <div className="grid grid-cols-2 gap-2 text-[10px]">
