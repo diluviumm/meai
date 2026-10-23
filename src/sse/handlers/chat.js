@@ -101,9 +101,9 @@ export async function handleChat(request, clientRawRequest = null) {
       log.warn("BUDGET", `Key ${budget.keyName} over budget (${budget.cost}/${budget.budget})`);
       return new Response(JSON.stringify({
         error: {
-          message: `Budget harian API key habis ($${budget.cost.toFixed(4)} / $${budget.budget.toFixed(2)}). Reset 00:00 WITA.`,
-          type: "insufficient_quota",
-          code: "insufficient_quota",
+          message: `MeAI local budget guard: batas harian API key ${budget.keyName} habis ($${budget.cost.toFixed(4)} / $${budget.budget.toFixed(2)}). Ini bukan billing provider; reset 00:00 WITA atau naikkan costBudgetByKey.`,
+          type: "gateway_budget",
+          code: "meai_budget_exceeded",
         },
       }), { status: 429, headers: { "Content-Type": "application/json" } });
     }
