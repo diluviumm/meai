@@ -83,6 +83,11 @@ export async function getInsights({ hours = WINDOW_HOURS } = {}) {
      FROM usageHistory WHERE timestamp >= ? ORDER BY timestamp DESC`,
     [since],
   );
+  const longRows = db.all(
+    `SELECT timestamp, provider, model, connectionId, status, cost, promptTokens, completionTokens, tokens, meta
+     FROM usageHistory WHERE timestamp >= ? ORDER BY timestamp DESC`,
+    [new Date(Date.now() - 28 * 86_400_000).toISOString()],
+  );
 
   const connections = await getProviderConnections();
   const connectionNames = Object.fromEntries(connections.map((c) => [c.id, c.name || c.provider || c.id.slice(0, 8)]));
@@ -234,6 +239,69 @@ export async function getInsights({ hours = WINDOW_HOURS } = {}) {
   }
   const timelineRows = timeline.map((item, hour) => ({ hour, requests: item.requests, successRate: item.requests ? Number((item.success / item.requests).toFixed(3)) : null, cost: Number(item.cost.toFixed(6)), p95: percentile(item.latency, 95) }));
 
+  const weekdayBuckets = Array.from({ length: 7 }, () => ({ cost: 0, requests: 0, days: new Set() }));
+  for (const row of longRows) {
+    const day = new Date(row.timestamp).getDay();
+    weekdayBuckets[day].cost += Number(row.cost || 0);
+    weekdayBuckets[day].requests += 1;
+    weekdayBuckets[day].days.add(new Date(row.timestamp).toISOString().slice(0, 10));
+  }
+  const weekdayForecast = weekdayBuckets.map((bucket, day) => ({
+    day,
+    avgCost: bucket.days.size ? Number((bucket.cost / bucket.days.size).toFixed(4)) : null,
+    avgRequests: bucket.days.size ? Math.round(bucket.requests / bucket.days.size) : 0,
+    days: bucket.days.size,
+  }));
+
+  const cacheByModel = {};
+  for (const row of rows) {
+    const key = `${row.model || "unknown"} (${row.provider || "unknown"})`;
+    const tokens = parseJson(row.tokens, {});
+    const cached = Number(tokens?.cached_tokens || 0) || 0;
+    const prompt = Number(row.promptTokens || 0);
+    if (!cacheByModel[key]) cacheByModel[key] = { prompt: 0, cached: 0, requests: 0 };
+    cacheByModel[key].prompt += prompt;
+    cacheByModel[key].cached += cached;
+    cacheByModel[key].requests += 1;
+  }
+  const cacheHygiene = Object.entries(cacheByModel).map(([model, item]) => ({
+    model,
+    requests: item.requests,
+    cacheRate: item.prompt ? Number((item.cached / item.prompt).toFixed(3)) : null,
+    promptTokens: item.prompt,
+    advice: !item.prompt ? "tanpa prompt token" : item.cached / item.prompt < 0.2 ? "prefix tidak stabil / cache dingin" : "cache sehat",
+  })).sort((a, b) => (a.cacheRate ?? 1) - (b.cacheRate ?? 1)).slice(0, 8);
+
+  const latencyGroups = {};
+  for (const row of rows) {
+    const key = `${row.model || "unknown"} · ${row.connectionId || "unknown"}`;
+    if (!latencyGroups[key]) latencyGroups[key] = Array.from({ length: 24 }, () => ({ requests: 0, latency: [], rate429: 0 }));
+    const hour = new Date(row.timestamp).getHours();
+    const cell = latencyGroups[key][hour];
+    cell.requests += 1;
+    if (readStatus(row.status) === 429) cell.rate429 += 1;
+    const latency = latencyOf(row.meta);
+    if (latency != null) cell.latency.push(latency);
+  }
+  const latencyHeatmap = Object.entries(latencyGroups).map(([key, cells]) => ({
+    key,
+    cells: cells.map((cell) => ({ requests: cell.requests, p95: percentile(cell.latency, 95), rate429: cell.rate429 })),
+  })).sort((a, b) => b.cells.reduce((sum, cell) => sum + cell.requests, 0) - a.cells.reduce((sum, cell) => sum + cell.requests, 0)).slice(0, 6);
+
+  const sloP95 = Number(settings.sloP95Ms) || 30_000;
+  const sloSuccess = Number(settings.sloSuccessRate) || 0.99;
+  const sloIncidents = [];
+  let incident = null;
+  for (const row of timelineRows) {
+    const breach = (row.p95 != null && row.p95 > sloP95) || (row.successRate != null && row.successRate < sloSuccess);
+    if (breach && !incident) incident = { startHour: row.hour, endHour: row.hour, maxP95: row.p95 || 0, requests: row.requests };
+    if (breach && incident) { incident.endHour = row.hour; incident.maxP95 = Math.max(incident.maxP95, row.p95 || 0); incident.requests += row.requests; }
+    if (!breach && incident) { sloIncidents.push(incident); incident = null; }
+  }
+  if (incident) sloIncidents.push(incident);
+  const sloIncidentSummary = sloIncidents.slice(-5).map((item) => ({ ...item, durationHours: item.endHour - item.startHour + 1 }));
+
+
   const resetSeries = {};
   for (const row of quotaRows) {
     const key = `${row.connectionId}|${row.quotaName}`;
@@ -338,6 +406,10 @@ export async function getInsights({ hours = WINDOW_HOURS } = {}) {
     db: { bytes: dbBytes },
     providerMatrix: connectionRows.map((row) => ({ provider: row.provider, name: row.name, score: row.score, requests: row.requests, rate429: row.rate429, p95: row.p95 })),
     timeline: timelineRows,
+    weekdayForecast,
+    cacheHygiene,
+    latencyHeatmap,
+    sloIncidents: sloIncidentSummary,
     resetCalendar,
     keyAges,
     quotaHistory: { rows: quotaStats.rows || 0, oldest: quotaStats.oldest || null, newest: quotaStats.newest || null },

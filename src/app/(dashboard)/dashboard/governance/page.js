@@ -20,6 +20,7 @@ export default function GovernancePage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [backupResult, setBackupResult] = useState(null);
 
   const load = () => fetch("/api/governance", { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(setData).catch((err) => setError(err.message));
 
@@ -30,6 +31,13 @@ export default function GovernancePage() {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) setNotice(payload.error || "Snapshot gagal.");
     else { setNotice(`Snapshot config tersimpan (${payload.keys} key).`); load(); }
+  };
+
+  const checkBackup = async (name) => {
+    const response = await fetch("/api/governance/backups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) setNotice(payload.error || "Pemeriksaan backup gagal.");
+    else { setBackupResult(payload); setNotice(`Backup ${name}: integrity ${payload.integrity}, ${payload.tables} tabel.`); }
   };
 
   if (error) return <div className="p-4"><Card className="border-danger/30 bg-danger/10 p-4 text-sm text-danger">Gagal memuat governance: {error}</Card></div>;
@@ -52,13 +60,15 @@ export default function GovernancePage() {
         </Panel>
 
         <Panel title="2. Backup inventory" hint={`${data.backups.length} file`}>
-          {data.backups.length === 0 ? <p className="text-xs text-text-muted">Tidak ada file backup.</p> : data.backups.slice(0, 4).map((item) => <Row key={item.name} label={item.name} value={`${bytes(item.bytes)} · ${new Date(item.modified).toLocaleDateString()}`} />)}
+          {data.backups.length === 0 ? <p className="text-xs text-text-muted">Tidak ada file backup.</p> : data.backups.slice(0, 4).map((item) => <div key={item.name} className="border-t border-border/50 py-1 text-[10px]"><div className="flex items-center justify-between gap-2"><span className="truncate font-medium text-text-main" title={item.name}>{item.name}</span><button type="button" onClick={() => checkBackup(item.name)} className="shrink-0 text-[9px] text-primary hover:underline">check</button></div><div className="text-text-muted">{bytes(item.bytes)} · {new Date(item.modified).toLocaleDateString()}</div></div>)}
+          {backupResult ? <p className="rounded-md border border-border/60 bg-bg-subtle px-2 py-1 text-[10px] text-text-muted">{backupResult.name}: {backupResult.integrity} · {backupResult.tables} tabel · {backupResult.quotaRows ?? "—"} quota</p> : null}
         </Panel>
 
         <Panel title="3. Config drift" hint={data.configDrift.available ? "snapshot ada" : "belum ada"}>
           <Row label="Status" value={!data.configDrift.available ? "snapshot belum dibuat" : data.configDrift.changedKeys.length ? `${data.configDrift.changedKeys.length} key berubah` : "tidak ada drift"} tone={data.configDrift.changedKeys?.length ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
           <Row label="Snapshot" value={data.configDrift.checkedAt ? new Date(data.configDrift.checkedAt).toLocaleString() : "—"} />
           {data.configDrift.changedKeys?.slice(0, 4).map((key) => <Row key={key} label={key} value="changed" tone="text-amber-600 dark:text-amber-400" />)}
+          {data.settingsAudit?.slice(0, 3).map((entry) => <Row key={entry.ts} label={`audit ${new Date(entry.ts).toLocaleTimeString()}`} value={(entry.changed || []).map((item) => item.key).join(", ").slice(0, 38)} />)}
         </Panel>
 
         <Panel title="4. Combo inventory" hint={`${data.comboInventory.count} combo`}>
@@ -70,12 +80,14 @@ export default function GovernancePage() {
           {data.circuit.length === 0 ? <p className="text-xs text-text-muted">Tidak ada koneksi 429/cooldown.</p> : data.circuit.slice(0, 5).map((row) => <Row key={row.id} label={row.name} value={`${row.state} · ${row.rate429}×429`} tone={row.state === "cooldown" ? "text-amber-600 dark:text-amber-400" : "text-text-main"} />)}
         </Panel>
 
-        <Panel title="6. Rate-limit advice" hint={`${data.rateAdvice.length} saran`}>
+        <Panel title="6. Rate-limit & timeout advice" hint={`${data.rateAdvice.length} saran`}>
           {data.rateAdvice.length === 0 ? <p className="text-xs text-text-muted">Tidak ada 429 atau p95 di atas 30s.</p> : data.rateAdvice.map((row) => <div key={row.name} className="border-t border-border/50 py-1 text-[10px]"><div className="font-medium text-text-main">{row.name}</div><div className="text-text-muted">{row.advice} · 429 {row.rate429} · p95 {row.p95 ? Math.round(row.p95) : "—"}ms</div></div>)}
+          {data.timeoutAdvisor.slice(0, 3).map((row) => <Row key={`timeout-${row.name}`} label={`${row.name} timeout`} value={`${Math.round(row.recommendedMs / 1000)}s`} />)}
         </Panel>
 
-        <Panel title="7. Deprecation radar" hint="model">
+        <Panel title="7. Deprecation & pricing radar" hint="model">
           {data.deprecations ? <pre className="max-h-24 overflow-auto text-[10px] text-text-muted">{JSON.stringify(data.deprecations).slice(0, 500)}</pre> : <p className="text-xs text-text-muted">Belum ada file `~/.meai/model-deprecations.json`; radar belum memiliki data.</p>}
+          {data.priceDiff ? <Row label="Pricing diff" value={`+${data.priceDiff.added?.length || 0} / −${data.priceDiff.removed?.length || 0} / Δ${data.priceDiff.changed?.length || 0}`} /> : <Row label="Pricing diff" value="belum ada snapshot" />}
         </Panel>
 
         <Panel title="8. Capability coverage" hint={`${data.capabilityCoverage.length} provider`}>

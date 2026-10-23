@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { resetComboRotation } from "open-sse/services/combo.js";
+import { appendSettingsAudit } from "@/lib/settingsAudit";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +78,7 @@ export async function PATCH(request) {
     }
 
     const settings = await updateSettings(body);
+    appendSettingsAudit(body);
 
     // Apply outbound proxy settings immediately (no restart required)
     if (

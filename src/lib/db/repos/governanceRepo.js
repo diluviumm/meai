@@ -5,6 +5,7 @@ import { getAdapter } from "../driver.js";
 import { getSettings } from "./settingsRepo.js";
 import { getCombos } from "./combosRepo.js";
 import { getInsights } from "./insightsRepo.js";
+import { readSettingsAudit } from "../../../lib/settingsAudit.js";
 
 const MEAI_DIR = path.join(os.homedir(), ".meai");
 const DB_DIR = path.join(MEAI_DIR, "db");
@@ -64,6 +65,11 @@ export async function getGovernance() {
     .filter((row) => row.rate429 > 0 || row.p95 > 30_000)
     .map((row) => ({ name: row.name, rate429: row.rate429, p95: row.p95, advice: row.rate429 ? "Kurangi concurrency / tambah fallback" : "Turunkan timeout atau pilih provider lain" }));
 
+  const timeoutAdvisor = insights.connections.map((row) => {
+    const recommended = row.p95 == null ? 60_000 : Math.round(Math.max(15_000, Math.min(120_000, row.p95 * 1.5)));
+    return { name: row.name, p95: row.p95, recommendedMs: recommended, reason: row.p95 == null ? "belum ada latency" : "p95 × 1.5, clamp 15–120s" };
+  });
+
   const timeline = insights.timeline || [];
   const costs = timeline.map((row) => row.cost).filter((value) => value >= 0);
   const mean = costs.length ? costs.reduce((a, b) => a + b, 0) / costs.length : 0;
@@ -90,6 +96,7 @@ export async function getGovernance() {
       changedKeys,
       checkedAt: snapshot?.ts || null,
     },
+    settingsAudit: readSettingsAudit(20),
     comboInventory: {
       count: combos.length,
       latestUpdatedAt: combos.reduce((latest, combo) => Math.max(latest, new Date(combo.updatedAt || 0).getTime()), 0) || null,
@@ -97,7 +104,9 @@ export async function getGovernance() {
     },
     circuit,
     rateAdvice,
+    timeoutAdvisor,
     deprecations: readJson("model-deprecations.json"),
+    priceDiff: readJson("pricing-diff.json"),
     capabilityCoverage: (insights.providerMatrix || []).map((row) => ({ provider: row.provider, connections: 1, score: row.score })),
     budgetConfidence: {
       confidence,

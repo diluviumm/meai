@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
+import OrbitalHealth from "@/shared/components/OrbitalHealth";
 
 const fmtInt = (n) => new Intl.NumberFormat().format(Number(n) || 0);
 const fmtUsd = (n) => `$${(Number(n) || 0).toFixed(Number(n) >= 1 ? 2 : 4)}`;
@@ -247,6 +248,42 @@ export default function InsightsPage() {
         <Kpi label="Cache hit" value={pct(cacheRate)} hint="cached / prompt token" tone="text-primary" />
         <Kpi label="Anomaly" value={data.anomaly.flagged ? `${data.anomaly.ratio}×` : "normal"} hint={`${fmtUsd(data.anomaly.currentHourCost)} jam ini`} tone={data.anomaly.flagged ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
       </div>
+
+      <OrbitalHealth items={data.connections} />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="flex flex-col gap-2 p-3 sm:p-4">
+          <h2 className="text-sm font-semibold text-text-main">Weekday cost forecast</h2>
+          <div className="flex h-24 items-end gap-1" role="img" aria-label="Rata-rata biaya per hari dalam seminggu">
+            {data.weekdayForecast.map((row) => {
+              const max = Math.max(0.0001, ...data.weekdayForecast.map((item) => item.avgCost || 0));
+              return <span key={row.day} className="flex-1 rounded-t bg-primary/60" title={`Hari ${row.day}: ${fmtUsd(row.avgCost)}`} style={{ height: `${Math.max(4, ((row.avgCost || 0) / max) * 100)}%` }} />;
+            })}
+          </div>
+          <div className="flex justify-between text-[9px] text-text-muted"><span>Min</span><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span></div>
+        </Card>
+        <Card className="flex flex-col gap-1 p-3 sm:p-4">
+          <h2 className="text-sm font-semibold text-text-main">Prompt-cache hygiene</h2>
+          {data.cacheHygiene.slice(0, 4).map((row) => <div key={row.model} className="flex items-center justify-between gap-2 border-t border-border/50 py-1 text-[10px]"><span className="truncate text-text-main" title={row.model}>{row.model}</span><span className={row.cacheRate != null && row.cacheRate < 0.2 ? "text-amber-600 dark:text-amber-400" : "text-text-muted"}>{pct(row.cacheRate)}</span></div>)}
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="flex min-w-0 flex-col gap-2 p-3 sm:p-4">
+          <h2 className="text-sm font-semibold text-text-main">Latency heatmap per model · connection</h2>
+          <div className="overflow-x-auto" tabIndex={0} aria-label="Heatmap latency per model dan koneksi">
+            <div className="min-w-[430px] space-y-1">
+              {data.latencyHeatmap.map((row) => <div key={row.key} className="grid grid-cols-[130px_repeat(24,minmax(0,1fr))] items-center gap-0.5"><span className="truncate pr-1 text-[9px] text-text-muted" title={row.key}>{row.key}</span>{row.cells.map((cell, hour) => <span key={hour} className="h-3 rounded-[2px]" style={{ backgroundColor: cell.requests ? `rgba(93,79,176,${0.12 + Math.min(1, (cell.p95 || 0) / 30000) * 0.8})` : "rgba(148,148,159,.08)" }} title={`${hour}:00 · p95 ${cell.p95 ? Math.round(cell.p95) : "—"}ms · ${cell.requests} req`} />)}</div>)}
+            </div>
+          </div>
+        </Card>
+        <Card className="flex flex-col gap-1 p-3 sm:p-4">
+          <h2 className="text-sm font-semibold text-text-main">SLO incident timeline</h2>
+          {data.sloIncidents.length === 0 ? <p className="text-xs text-text-muted">Tidak ada breach pada jendela ini.</p> : data.sloIncidents.map((row) => <div key={`${row.startHour}-${row.endHour}`} className="flex justify-between border-t border-border/50 py-1 text-[10px]"><span className="text-text-main">{String(row.startHour).padStart(2, "0")}:00–{String(row.endHour + 1).padStart(2, "0")}:00</span><span className="text-amber-600 dark:text-amber-400">{row.durationHours}j · p95 {Math.round(row.maxP95)}ms</span></div>)}
+        </Card>
+      </div>
+
+
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <Card className="flex flex-col gap-3 p-3 sm:p-4">
