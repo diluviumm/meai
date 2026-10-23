@@ -80,6 +80,16 @@ export default function InsightsPage() {
     else setSim(payload);
   };
 
+  const compactNow = async () => {
+    const response = await fetch("/api/maintenance/quota-compaction", { method: "POST" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) setNotice(payload.error || "Compaction gagal.");
+    else {
+      setNotice(`Compaction selesai: ${payload.removed || 0} baris lama diringkas.`);
+      setData((prev) => prev ? { ...prev, ops: { ...prev.ops, compaction: { ts: Date.now(), ...payload } } } : prev);
+    }
+  };
+
   if (loading) return <div className="p-4"><div className="h-64 animate-pulse rounded-2xl bg-surface-2" /></div>;
   if (error) return <div className="p-4"><Card className="border-danger/30 bg-danger/10 p-4 text-sm text-danger">Gagal memuat insights: {error}</Card></div>;
 
@@ -154,7 +164,7 @@ export default function InsightsPage() {
             <h2 className="text-sm font-semibold text-text-main">Model leaderboard</h2>
             <span className="text-[10px] text-text-muted">cost/1k + latency</span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} aria-label="Tabel leaderboard model">
             <table className="w-full min-w-[620px] text-left text-[11px]">
               <thead className="text-[10px] uppercase tracking-wide text-text-muted">
                 <tr><th className="py-1.5 pr-2">Model</th><th className="pr-2">Req</th><th className="pr-2">Success</th><th className="pr-2">p95</th><th className="pr-2">Cost/1k</th><th>Cache</th></tr>
@@ -182,7 +192,7 @@ export default function InsightsPage() {
             <span className="text-[10px] text-text-muted">429 / jam</span>
           </div>
           {data.heatmap.length === 0 ? <p className="text-xs text-text-muted">Belum ada request per key.</p> : (
-            <div className="overflow-x-auto pb-1">
+            <div className="overflow-x-auto pb-1" tabIndex={0} aria-label="Heatmap rate limit per jam">
               <div className="min-w-[520px] space-y-1">
                 <div className="grid grid-cols-[96px_repeat(24,minmax(0,1fr))] gap-0.5 text-[8px] text-text-muted">
                   <span />
@@ -207,6 +217,10 @@ export default function InsightsPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="flex flex-col gap-3 p-3 sm:p-4">
           <h2 className="text-sm font-semibold text-text-main">Automation status</h2>
+          <div className="flex items-center justify-between gap-2 text-[10px]">
+            <span className="text-text-muted">Kompaksi, drill, catalog, a11y</span>
+            <Button variant="ghost" size="xs" onClick={compactNow}>Compact now</Button>
+          </div>
           <div className="grid grid-cols-2 gap-2 text-[10px]">
             <div className="rounded-lg border border-border/60 bg-bg-subtle p-2">
               <div className="text-text-muted">Quota compaction</div>
@@ -258,7 +272,7 @@ export default function InsightsPage() {
           </div>
         </div>
         {sim ? (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} aria-label="Tabel simulasi combo">
             <table className="w-full min-w-[560px] text-left text-[11px]">
               <thead className="text-[10px] uppercase text-text-muted"><tr><th className="py-1 pr-2">#</th><th className="pr-2">Model</th><th className="pr-2">Provider</th><th className="pr-2">Health</th><th>Kompatibel</th></tr></thead>
               <tbody>{sim.models.map((row) => <tr key={row.model} className="border-t border-border/50"><td className="py-1 pr-2 text-text-muted">{row.order}</td><td className="pr-2 font-mono text-text-main">{row.model}</td><td className="pr-2 text-text-muted">{row.provider}</td><td className="pr-2">{row.healthScore ?? "—"}</td><td className={row.compatible ? "text-emerald-500" : "text-amber-500"}>{row.compatible ? "ya" : `tidak (${row.missing.join(", ")})`}</td></tr>)}</tbody>

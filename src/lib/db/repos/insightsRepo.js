@@ -16,7 +16,11 @@ const MASK = (value) => {
 };
 
 function readStatus(value) {
-  const n = Number(value);
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw === "ok" || raw === "success") return 200;
+  if (raw === "rate_limited" || raw === "ratelimit" || raw === "too_many_requests") return 429;
+  if (raw === "error" || raw === "failed" || raw === "failure") return 500;
+  const n = Number(raw);
   return Number.isFinite(n) ? n : 0;
 }
 
