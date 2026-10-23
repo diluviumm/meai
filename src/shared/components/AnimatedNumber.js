@@ -11,7 +11,7 @@ export default function AnimatedNumber({ value, format = (n) => String(n), durat
   const target = Number(value);
   const safeTarget = Number.isFinite(target) ? target : 0;
   const [shown, setShown] = useState(0);
-  const previous = useRef(safeTarget);
+  const previous = useRef(0);
 
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
