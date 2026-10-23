@@ -21,6 +21,7 @@ export default function GovernancePage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [backupResult, setBackupResult] = useState(null);
+  const [webhookResult, setWebhookResult] = useState(null);
 
   const load = () => fetch("/api/governance", { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(setData).catch((err) => setError(err.message));
 
@@ -38,6 +39,13 @@ export default function GovernancePage() {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) setNotice(payload.error || "Pemeriksaan backup gagal.");
     else { setBackupResult(payload); setNotice(`Backup ${name}: integrity ${payload.integrity}, ${payload.tables} tabel.`); }
+  };
+
+  const testWebhook = async () => {
+    const response = await fetch("/api/governance/webhook", { method: "POST" });
+    const payload = await response.json().catch(() => ({}));
+    setWebhookResult(payload);
+    setNotice(payload.ok ? `Webhook OK (HTTP ${payload.status}).` : payload.error || "Webhook gagal.");
   };
 
   if (error) return <div className="p-4"><Card className="border-danger/30 bg-danger/10 p-4 text-sm text-danger">Gagal memuat governance: {error}</Card></div>;
@@ -109,6 +117,8 @@ export default function GovernancePage() {
           <Row label="Status" value={data.webhook.configured ? "aktif" : "belum diset"} tone={data.webhook.configured ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"} />
           <Row label="Host" value={data.webhook.urlHost || "—"} />
           <p className="text-[10px] text-text-muted">Set `alertWebhookUrl` di Settings untuk mengaktifkan.</p>
+          <Button variant="secondary" size="sm" onClick={testWebhook} disabled={!data.webhook.configured}>Test webhook</Button>
+          {webhookResult ? <p className="text-[10px] text-text-muted">{webhookResult.ok ? `HTTP ${webhookResult.status}` : webhookResult.error}</p> : null}
         </Panel>
 
         <Panel title="12. Performance & storage" hint="snapshot">
