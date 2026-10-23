@@ -117,12 +117,14 @@ export async function getGovernance() {
       projectedHigh: Number((insights.pacing.projectedEndOfDay + sd * 24).toFixed(4)),
       pacing: insights.pacing,
     },
-    costAllocation: (insights.keys || []).map((row) => ({
-      name: row.name,
-      label: (settings.costLabels && settings.costLabels[row.name]) || row.name,
-      cost: row.cost,
-      requests: row.requests,
-    })),
+    costAllocation: (insights.keys || [])
+      .filter((row) => row.name !== "__live_probe__")
+      .map((row) => ({
+        name: row.name,
+        label: (settings.costLabels && settings.costLabels[row.name]) || row.name,
+        cost: row.cost,
+        requests: row.requests,
+      })),
     webhook: {
       configured: Boolean(settings.alertWebhookUrl || settings.alertWebhook),
       urlHost: (() => { try { return new URL(settings.alertWebhookUrl || settings.alertWebhook).host; } catch { return null; } })(),
