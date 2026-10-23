@@ -49,7 +49,7 @@ export default function InsightsPage() {
   const [sortBy, setSortBy] = useState("cost");
   const [columns, setColumns] = useState({ model: true, requests: true, success: true, p95: true, cost: true, cache: true });
   const [brush, setBrush] = useState([0, 23]);
-  const [page, setPage] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
   const touchX = useRef(null);
   const [savedViews, setSavedViews] = useState([]);
   const [alertHistory, setAlertHistory] = useState([]);
@@ -141,10 +141,12 @@ export default function InsightsPage() {
     return [...rows].sort(sorters[sortBy] || sorters.cost);
   }, [data, query, sortBy]);
   const timelineRows = useMemo(() => (data?.timeline || []).slice(brush[0], brush[1] + 1), [data, brush]);
-  const pageSize = 12;
-  const totalPages = Math.max(1, Math.ceil(visibleLeaderboard.length / pageSize));
-  const safePage = Math.min(page, totalPages - 1);
-  const pagedLeaderboard = visibleLeaderboard.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const rowHeight = 28;
+  const virtualStart = Math.max(0, Math.floor(scrollTop / rowHeight) - 2);
+  const virtualEnd = Math.min(visibleLeaderboard.length, virtualStart + 14);
+  const virtualRows = visibleLeaderboard.slice(virtualStart, virtualEnd);
+  const topSpacer = virtualStart * rowHeight;
+  const bottomSpacer = Math.max(0, (visibleLeaderboard.length - virtualEnd) * rowHeight);
   const shiftBrush = (delta) => {
     const length = data?.timeline?.length || 24;
     const width = brush[1] - brush[0];
@@ -429,8 +431,8 @@ export default function InsightsPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-text-main">Model leaderboard</h2>
             <div className="flex items-center gap-1.5">
-              <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} placeholder="Cari model…" aria-label="Cari model leaderboard" className="h-7 w-28 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main outline-none focus:border-primary" />
-              <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPage(0); }} aria-label="Urutkan leaderboard" className="h-7 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main">
+              <input value={query} onChange={(event) => { setQuery(event.target.value); setScrollTop(0); }} placeholder="Cari model…" aria-label="Cari model leaderboard" className="h-7 w-28 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main outline-none focus:border-primary" />
+              <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); setScrollTop(0); }} aria-label="Urutkan leaderboard" className="h-7 rounded-md border border-border bg-surface px-2 text-[10px] text-text-main">
                 <option value="cost">Cost</option><option value="requests">Req</option><option value="p95">p95</option><option value="success">Success</option>
               </select>
               <details className="relative">
@@ -443,13 +445,14 @@ export default function InsightsPage() {
               </details>
             </div>
           </div>
-          <div className="overflow-x-auto" tabIndex={0} aria-label="Tabel leaderboard model">
+          <div className="max-h-80 overflow-auto" tabIndex={0} aria-label="Tabel leaderboard model" onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}>
             <table className="w-full min-w-[620px] text-left text-[11px]">
-              <thead className="text-[10px] uppercase tracking-wide text-text-muted">
+              <thead className="sticky top-0 z-10 bg-surface text-[10px] uppercase tracking-wide text-text-muted">
                 <tr><th className={columns.model ? "" : "hidden"}>Model</th><th className={columns.requests ? "pr-2" : "hidden"}>Req</th><th className={columns.success ? "pr-2" : "hidden"}>Success</th><th className={columns.p95 ? "pr-2" : "hidden"}>p95</th><th className={columns.cost ? "pr-2" : "hidden"}>Cost/1k</th><th className={columns.cache ? "" : "hidden"}>Cache</th></tr>
               </thead>
               <tbody>
-                {pagedLeaderboard.map((row) => (
+                <tr aria-hidden="true" style={{ height: topSpacer }}><td colSpan={6} /></tr>
+                {virtualRows.map((row) => (
                   <tr key={row.model} className="border-t border-border/50">
                     <td className={`${columns.model ? "" : "hidden"} max-w-[220px] truncate py-1.5 pr-2 font-medium text-text-main`} title={row.model}>{row.model}</td>
                     <td className={`${columns.requests ? "pr-2" : "hidden"} text-text-muted`}>{fmtInt(row.requests)}</td>
@@ -459,14 +462,11 @@ export default function InsightsPage() {
                     <td className={columns.cache ? "text-text-muted" : "hidden"}>{pct(row.cacheHitRate)}</td>
                   </tr>
                 ))}
+                <tr aria-hidden="true" style={{ height: bottomSpacer }}><td colSpan={6} /></tr>
               </tbody>
             </table>
-            <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-text-muted">
-              <span>{visibleLeaderboard.length} model · halaman {safePage + 1}/{totalPages}</span>
-              <div className="flex items-center gap-1">
-                <button type="button" onClick={() => setPage(Math.max(0, safePage - 1))} disabled={safePage === 0} className="rounded border border-border px-2 py-1 disabled:opacity-40">‹</button>
-                <button type="button" onClick={() => setPage(Math.min(totalPages - 1, safePage + 1))} disabled={safePage >= totalPages - 1} className="rounded border border-border px-2 py-1 disabled:opacity-40">›</button>
-              </div>
+            <div className="mt-2 text-[10px] text-text-muted">
+              {visibleLeaderboard.length === 0 ? "0 model" : `${virtualStart + 1}–${virtualEnd} dari ${visibleLeaderboard.length} model · scroll untuk melihat sisanya`}
             </div>
             {data.leaderboard.length === 0 ? <p className="py-3 text-xs text-text-muted">Belum ada request pada jendela ini.</p> : null}
           </div>
