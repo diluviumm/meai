@@ -283,6 +283,25 @@ alih-alih mengosongkan kartu.
   Usage, Quota, dan Panduan; konten diberi padding bawah agar tidak tertutup.
 - **Export JSON** = snapshot penuh; **Export CSV** = leaderboard terfilter.
 
+### 7.11 Governance & Safety
+
+Buka `/dashboard/governance` untuk 12 pemeriksaan operasional:
+
+1. **Fork self-check** — versi, API/DB, jumlah usage/quota/connection.
+2. **Backup inventory** — file `data*.sqlite`/`.bak` di `~/.meai/db` beserta ukuran.
+3. **Config drift** — bandingkan settings aktif dengan snapshot; tombol **Snapshot config** membuat baseline.
+4. **Combo inventory** — jumlah combo dan waktu update terakhir.
+5. **Circuit/cooldown** — koneksi dengan 429 atau `rateLimitedUntil`.
+6. **Rate-limit advice** — saran dari 429 dan p95.
+7. **Deprecation radar** — membaca `~/.meai/model-deprecations.json` bila tersedia.
+8. **Capability coverage** — score per provider dari Insights.
+9. **Budget confidence** — proyeksi rendah/tinggi dari variance biaya per jam.
+10. **Cost allocation** — biaya dan request per API key.
+11. **Webhook readiness** — status `alertWebhookUrl` dan host-nya.
+12. **Performance & storage** — ukuran DB, jumlah usage/quota, bucket timeline.
+
+Snapshot config tidak mengubah settings; ia hanya menulis `~/.meai/settings-snapshot.json` sebagai baseline drift.
+
 ---
 
 ## 8. CodeBuddy Intl: 11128 vs 11140

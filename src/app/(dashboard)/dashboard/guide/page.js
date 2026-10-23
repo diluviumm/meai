@@ -238,6 +238,23 @@ const FEATURES = [
     href: "/dashboard/insights",
   },
   {
+    id: "governance",
+    category: "monitor",
+    icon: "policy",
+    title: "Governance & Safety",
+    summary:
+      "12 pemeriksaan: self-check, backup inventory, config drift, combo inventory, circuit/cooldown, rate advice, deprecation radar, capability coverage, budget confidence, cost allocation, webhook readiness, performance.",
+    steps: [
+      "Buka Governance & Safety dari sidebar.",
+      "Klik Snapshot config untuk membuat baseline drift.",
+      "Pantau panel 3 (drift), 5 (circuit), 9 (budget confidence), dan 11 (webhook).",
+      "Backup inventory menampilkan file SQLite terbaru di ~/.meai/db.",
+      "Perbaiki item berwarna amber/merah sebelum mengubah routing.",
+    ],
+    tip: "Snapshot config hanya membaca settings dan menulis file baseline; tidak mengubah konfigurasi aktif.",
+    href: "/dashboard/governance",
+  },
+  {
     id: "cli-tools",
     category: "integrasi",
     icon: "terminal",
