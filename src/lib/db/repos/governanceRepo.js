@@ -101,6 +101,11 @@ export async function getGovernance() {
       latestUpdatedAt: combos.reduce((latest, combo) => Math.max(latest, new Date(combo.updatedAt || 0).getTime()), 0) || null,
       names: combos.map((combo) => combo.name),
     },
+    catalogDiff: (() => {
+      const diff = readJson("catalog-diff.json");
+      if (!diff) return { available: false, added: 0, removed: 0, count: null, ts: null };
+      return { available: true, added: diff.added?.length || 0, removed: diff.removed?.length || 0, count: diff.count ?? null, ts: diff.ts || null, initial: Boolean(diff.initial) };
+    })(),
     deprecations: readJson("model-deprecations.json"),
     priceDiff,
     capabilityCoverage: (insights.providerMatrix || []).map((row) => ({ provider: row.provider, connections: 1, score: row.score })),
@@ -112,7 +117,12 @@ export async function getGovernance() {
       projectedHigh: Number((insights.pacing.projectedEndOfDay + sd * 24).toFixed(4)),
       pacing: insights.pacing,
     },
-    costAllocation: (insights.keys || []).map((row) => ({ name: row.name, cost: row.cost, requests: row.requests })),
+    costAllocation: (insights.keys || []).map((row) => ({
+      name: row.name,
+      label: (settings.costLabels && settings.costLabels[row.name]) || row.name,
+      cost: row.cost,
+      requests: row.requests,
+    })),
     webhook: {
       configured: Boolean(settings.alertWebhookUrl || settings.alertWebhook),
       urlHost: (() => { try { return new URL(settings.alertWebhookUrl || settings.alertWebhook).host; } catch { return null; } })(),

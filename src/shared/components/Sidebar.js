@@ -19,6 +19,7 @@ const navItems = [
   { href: "/dashboard/combos", label: "Combo & Vision Adapter", icon: "layers" },
   // { href: "/dashboard/basic-chat", label: "Basic Chat", icon: "chat" }, // Hidden
   { href: "/dashboard/usage", label: "Usage", icon: "bar_chart" },
+  { href: "/dashboard/billing/invoice", label: "Invoice & Biaya", icon: "receipt_long" },
   { href: "/dashboard/insights", label: "Insights & Health", icon: "monitoring" },
   { href: "/dashboard/governance", label: "Governance & Safety", icon: "policy" },
   { href: "/dashboard/quota", label: "Quota Tracker", icon: "data_usage" },

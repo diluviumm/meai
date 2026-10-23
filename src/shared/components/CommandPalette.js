@@ -8,6 +8,7 @@ const COMMANDS = [
   { href: "/dashboard/insights", label: "Insights & Health", icon: "monitoring" },
   { href: "/dashboard/governance", label: "Governance & Safety", icon: "policy" },
   { href: "/dashboard/usage", label: "Usage", icon: "bar_chart" },
+  { href: "/dashboard/billing/invoice", label: "Invoice & Biaya", icon: "receipt_long" },
   { href: "/dashboard/quota", label: "Quota Tracker", icon: "data_usage" },
   { href: "/dashboard/quota/history", label: "Riwayat Quota", icon: "history" },
   { href: "/dashboard/providers", label: "Providers", icon: "dns" },

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Card from "@/shared/components/Card";
 import Button from "@/shared/components/Button";
 import OrbitalHealth from "@/shared/components/OrbitalHealth";
+import AnimatedNumber from "@/shared/components/AnimatedNumber";
 
 const fmtInt = (n) => new Intl.NumberFormat().format(Number(n) || 0);
 const fmtUsd = (n) => `$${(Number(n) || 0).toFixed(Number(n) >= 1 ? 2 : 4)}`;
@@ -20,11 +21,11 @@ function ScoreRing({ score }) {
   );
 }
 
-function Kpi({ label, value, hint, tone = "text-text-main" }) {
+function Kpi({ label, value, hint, tone = "text-text-main", count, format }) {
   return (
     <div className="rounded-xl border border-border/60 bg-bg-subtle p-3 transition-transform duration-200 hover:-translate-y-0.5">
       <div className="text-[10px] uppercase tracking-wide text-text-muted">{label}</div>
-      <div className={`mt-1 truncate text-xl font-bold ${tone}`} title={String(value)}>{value}</div>
+      <div className={`mt-1 truncate text-xl font-bold ${tone}`} title={String(value)}>{count == null ? value : <AnimatedNumber value={count} format={format} />}</div>
       <div className="mt-0.5 truncate text-[10px] text-text-muted">{hint}</div>
     </div>
   );
@@ -47,6 +48,9 @@ export default function InsightsPage() {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("cost");
   const [columns, setColumns] = useState({ model: true, requests: true, success: true, p95: true, cost: true, cache: true });
+  const [brush, setBrush] = useState([0, 23]);
+  const [page, setPage] = useState(0);
+  const touchX = useRef(null);
   const [savedViews, setSavedViews] = useState([]);
   const [alertHistory, setAlertHistory] = useState([]);
 
@@ -136,6 +140,21 @@ export default function InsightsPage() {
     };
     return [...rows].sort(sorters[sortBy] || sorters.cost);
   }, [data, query, sortBy]);
+  const timelineRows = useMemo(() => (data?.timeline || []).slice(brush[0], brush[1] + 1), [data, brush]);
+  const pageSize = 12;
+  const totalPages = Math.max(1, Math.ceil(visibleLeaderboard.length / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+  const pagedLeaderboard = visibleLeaderboard.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const shiftBrush = (delta) => {
+    const length = data?.timeline?.length || 24;
+    const width = brush[1] - brush[0];
+    const start = Math.max(0, Math.min(length - 1 - width, brush[0] + delta));
+    setBrush([start, start + width]);
+  };
+  const updateBrush = (index, value) => {
+    const next = Number(value);
+    setBrush((current) => index === 0 ? [Math.min(next, current[1]), current[1]] : [current[0], Math.max(next, current[0])]);
+  };
 
   const saveCurrentView = () => {
     const next = [{ name: `${period}j · ${sortBy}${query ? ` · ${query}` : ""}`, period, sortBy, query, ts: Date.now() }, ...savedViews].slice(0, 8);
@@ -256,9 +275,9 @@ export default function InsightsPage() {
       ) : null}
 
       <div className="sticky top-0 z-20 -mx-3 grid grid-cols-2 gap-2 border-b border-border/50 bg-bg/90 px-3 py-2 backdrop-blur sm:-mx-4 sm:px-4 sm:grid-cols-4">
-        <Kpi label="Requests" value={fmtInt(data.totals.requests)} hint={`usageHistory ${data.windowHours} jam`} />
-        <Kpi label="Success" value={pct(data.totals.successRate)} hint="2xx–3xx" tone="text-emerald-600 dark:text-emerald-400" />
-        <Kpi label="Cache hit" value={pct(cacheRate)} hint="cached / prompt token" tone="text-primary" />
+        <Kpi label="Requests" value={fmtInt(data.totals.requests)} count={data.totals.requests} format={(n) => fmtInt(Math.round(n))} hint={`usageHistory ${data.windowHours} jam`} />
+        <Kpi label="Success" value={pct(data.totals.successRate)} count={(data.totals.successRate || 0) * 100} format={(n) => `${n.toFixed(1)}%`} hint="2xx–3xx" tone="text-emerald-600 dark:text-emerald-400" />
+        <Kpi label="Cache hit" value={pct(cacheRate)} count={(cacheRate || 0) * 100} format={(n) => `${n.toFixed(1)}%`} hint="cached / prompt token" tone="text-primary" />
         <Kpi label="Anomaly" value={data.anomaly.flagged ? `${data.anomaly.ratio}×` : "normal"} hint={`${fmtUsd(data.anomaly.currentHourCost)} jam ini`} tone={data.anomaly.flagged ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"} />
       </div>
 
@@ -430,7 +449,7 @@ export default function InsightsPage() {
                 <tr><th className={columns.model ? "" : "hidden"}>Model</th><th className={columns.requests ? "pr-2" : "hidden"}>Req</th><th className={columns.success ? "pr-2" : "hidden"}>Success</th><th className={columns.p95 ? "pr-2" : "hidden"}>p95</th><th className={columns.cost ? "pr-2" : "hidden"}>Cost/1k</th><th className={columns.cache ? "" : "hidden"}>Cache</th></tr>
               </thead>
               <tbody>
-                {visibleLeaderboard.map((row) => (
+                {pagedLeaderboard.map((row) => (
                   <tr key={row.model} className="border-t border-border/50">
                     <td className={`${columns.model ? "" : "hidden"} max-w-[220px] truncate py-1.5 pr-2 font-medium text-text-main`} title={row.model}>{row.model}</td>
                     <td className={`${columns.requests ? "pr-2" : "hidden"} text-text-muted`}>{fmtInt(row.requests)}</td>
@@ -442,6 +461,13 @@ export default function InsightsPage() {
                 ))}
               </tbody>
             </table>
+            <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-text-muted">
+              <span>{visibleLeaderboard.length} model · halaman {safePage + 1}/{totalPages}</span>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => setPage(Math.max(0, safePage - 1))} disabled={safePage === 0} className="rounded border border-border px-2 py-1 disabled:opacity-40">‹</button>
+                <button type="button" onClick={() => setPage(Math.min(totalPages - 1, safePage + 1))} disabled={safePage >= totalPages - 1} className="rounded border border-border px-2 py-1 disabled:opacity-40">›</button>
+              </div>
+            </div>
             {data.leaderboard.length === 0 ? <p className="py-3 text-xs text-text-muted">Belum ada request pada jendela ini.</p> : null}
           </div>
         </Card>
@@ -556,15 +582,41 @@ export default function InsightsPage() {
             ))}
           </div>
           <div className="flex flex-col gap-1">
-            <h3 className="text-[11px] font-semibold text-text-main">Usage timeline</h3>
-            <div className="flex h-16 items-end gap-0.5" role="img" aria-label="Usage per jam">
-              {data.timeline.map((item) => {
-                const max = Math.max(1, ...data.timeline.map((row) => row.requests));
+            <h3 className="mb-1 text-[11px] font-semibold text-text-main">Usage timeline · brush</h3>
+            <div
+              className="flex h-16 items-end gap-0.5 touch-pan-y"
+              role="img"
+              aria-label={`Usage per jam, rentang ${brush[0]}–${brush[1]}`}
+              onTouchStart={(event) => { touchX.current = event.touches[0]?.clientX ?? null; }}
+              onTouchEnd={(event) => {
+                const end = event.changedTouches[0]?.clientX;
+                if (touchX.current != null && end != null && Math.abs(end - touchX.current) > 30) shiftBrush(end > touchX.current ? -2 : 2);
+                touchX.current = null;
+              }}
+            >
+              {timelineRows.map((item) => {
+                const max = Math.max(1, ...timelineRows.map((row) => row.requests));
                 return <span key={item.hour} className="flex-1 rounded-t-sm bg-primary/60" style={{ height: `${Math.max(3, (item.requests / max) * 100)}%` }} title={`${item.hour}:00 — ${item.requests} req, ${fmtUsd(item.cost)}`} />;
               })}
             </div>
+            <div className="flex items-center justify-between gap-2 text-[9px] text-text-muted"><span>{brush[0].toString().padStart(2, "0")}:00</span><span>{brush[1].toString().padStart(2, "0")}:00</span></div>
+            <div className="flex items-center gap-1">
+              <label className="sr-only" htmlFor="brush-start">Awal rentang</label>
+              <input id="brush-start" type="range" min="0" max={Math.max(0, (data.timeline.length || 24) - 1)} value={brush[0]} onChange={(event) => updateBrush(0, event.target.value)} className="h-4 min-w-0 flex-1 accent-[var(--color-brand-500)]" />
+              <label className="sr-only" htmlFor="brush-end">Akhir rentang</label>
+              <input id="brush-end" type="range" min="0" max={Math.max(0, (data.timeline.length || 24) - 1)} value={brush[1]} onChange={(event) => updateBrush(1, event.target.value)} className="h-4 min-w-0 flex-1 accent-[var(--color-brand-500)]" />
+            </div>
             <div className="flex justify-between text-[9px] text-text-muted"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
           </div>
+        </div>
+        <div>
+          <h3 className="mb-1 text-[11px] font-semibold text-text-main">Cache TTL advisor</h3>
+          {(data.cacheTtlAdvisor || []).length === 0 ? <p className="text-xs text-text-muted">Belum ada model dengan ≥10 request untuk dinilai.</p> : data.cacheTtlAdvisor.map((row) => (
+            <div key={row.model} className="flex items-center justify-between gap-2 border-t border-border/50 py-1 text-[10px]">
+              <span className="truncate text-text-main" title={row.model}>{row.model}</span>
+              <span className="shrink-0 text-text-muted">{pct(row.cacheHitRate)} · {row.recommendation}</span>
+            </div>
+          ))}
         </div>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <div>

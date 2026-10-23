@@ -675,6 +675,22 @@ button:disabled,
   main { min-height: auto !important; }
 }
 
+/* ── Theme transition (GPU-safe, respects reduced motion) ─────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  body, header, aside, main, .glass-card {
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+  }
+}
+
+/* Touch devices: give primary controls a 44px target without changing layout
+   on mouse/trackpad. Links stay inline; only interactive controls grow. */
+@media (pointer: coarse) {
+  main button, main summary, main select, main input[type="checkbox"], main [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 /* ── Ronde-44 · Aksesibilitas fokus keyboard (WCAG 2.4.7 / riset 2026) ─────
    77 pemakaian outline-none tanpa pengganti membuat navigasi Tab tak terlihat.
    Aturan ini UNLAYERED (di luar @layer) sehingga mengalahkan .outline-none

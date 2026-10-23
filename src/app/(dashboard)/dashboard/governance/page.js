@@ -23,8 +23,15 @@ export default function GovernancePage() {
   const [backupResult, setBackupResult] = useState(null);
   const [webhookResult, setWebhookResult] = useState(null);
   const [pricingState, setPricingState] = useState(null);
+  const [costLabels, setCostLabels] = useState({});
+  const [probeModel, setProbeModel] = useState("cbcn/deepseek-v4.1-flash");
+  const [probeBusy, setProbeBusy] = useState(false);
+  const [probeResult, setProbeResult] = useState(null);
 
-  const load = () => fetch("/api/governance", { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(setData).catch((err) => setError(err.message));
+  const load = () => fetch("/api/governance", { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then((payload) => {
+    setData(payload);
+    setCostLabels(Object.fromEntries((payload.costAllocation || []).map((row) => [row.name, row.label || ""])));
+  }).catch((err) => setError(err.message));
 
   useEffect(() => { load(); }, []);
 
@@ -56,13 +63,34 @@ export default function GovernancePage() {
     else { setPricingState(payload.count); setNotice(`Pricing snapshot: ${payload.count} model.`); load(); }
   };
 
+  const runProbe = async () => {
+    setProbeBusy(true);
+    setProbeResult(null);
+    const response = await fetch("/api/governance/live-probe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: probeModel }) });
+    const payload = await response.json().catch(() => ({}));
+    setProbeResult(payload);
+    setProbeBusy(false);
+    setNotice(payload.ok ? `Probe ${probeModel}: HTTP ${payload.status} · ${payload.latencyMs}ms` : payload.error || "Probe gagal.");
+  };
+
+  const saveCostLabel = async (name) => {
+    const response = await fetch("/api/governance/cost-labels", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, label: costLabels[name] }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) setNotice(payload.error || "Label gagal disimpan.");
+    else { setNotice("Label biaya disimpan."); load(); }
+  };
+
   if (error) return <div className="p-4"><Card className="border-danger/30 bg-danger/10 p-4 text-sm text-danger">Gagal memuat governance: {error}</Card></div>;
   if (!data) return <div className="p-4"><div className="h-64 animate-pulse rounded-2xl bg-surface-2" /></div>;
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-3 sm:p-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-lg font-semibold text-text-main">Governance & Safety</h1><p className="mt-0.5 text-xs text-text-muted">10 pemeriksaan operasional: backup, drift, biaya, webhook, dan performa.</p></div>
+        <div><h1 className="text-lg font-semibold text-text-main">Governance & Safety</h1><p className="mt-0.5 text-xs text-text-muted">12 pemeriksaan operasional: backup, drift, katalog, biaya, webhook, performa, dan probe manual.</p></div>
         <div className="flex items-center gap-2"><Button variant="secondary" size="sm" onClick={snapshot}>Snapshot config</Button><span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted">{new Date(data.generatedAt).toLocaleString()}</span></div>
       </div>
       {notice ? <p className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">{notice}</p> : null}
@@ -92,29 +120,48 @@ export default function GovernancePage() {
           <Row label="Updated" value={data.comboInventory.latestUpdatedAt ? new Date(data.comboInventory.latestUpdatedAt).toLocaleString() : "—"} />
         </Panel>
 
-        <Panel title="5. Deprecation & pricing radar" hint="model">
+        <Panel title="5. Catalog changes" hint={data.catalogDiff.available ? "snapshot harian" : "belum ada"}>
+          {!data.catalogDiff.available ? <p className="text-xs text-text-muted">Belum ada `catalog-diff.json`; jalankan catalog watcher.</p> : (
+            <>
+              <Row label="Model saat ini" value={fmt(data.catalogDiff.count)} />
+              <Row label="Ditambah" value={`+${data.catalogDiff.added}`} tone={data.catalogDiff.added ? "text-emerald-600 dark:text-emerald-400" : "text-text-muted"} />
+              <Row label="Dihapus" value={`−${data.catalogDiff.removed}`} tone={data.catalogDiff.removed ? "text-amber-600 dark:text-amber-400" : "text-text-muted"} />
+              <Row label="Snapshot" value={data.catalogDiff.ts ? new Date(data.catalogDiff.ts * 1000).toLocaleString() : "—"} />
+            </>
+          )}
+        </Panel>
+
+        <Panel title="6. Deprecation & pricing radar" hint="model">
           {data.deprecations ? <pre className="max-h-24 overflow-auto text-[10px] text-text-muted">{JSON.stringify(data.deprecations).slice(0, 500)}</pre> : <p className="text-xs text-text-muted">Belum ada file `~/.meai/model-deprecations.json`; radar belum memiliki data.</p>}
           {data.priceDiff ? <Row label="Pricing diff" value={`+${data.priceDiff.added?.length || 0} / −${data.priceDiff.removed?.length || 0} / Δ${data.priceDiff.changed?.length || 0}`} /> : <Row label="Pricing diff" value="belum ada snapshot" />}
           <Button variant="ghost" size="xs" onClick={snapshotPricing}>Snapshot pricing</Button>
           {pricingState ? <p className="text-[10px] text-text-muted">{pricingState} model tersimpan.</p> : null}
         </Panel>
 
-        <Panel title="6. Capability coverage" hint={`${data.capabilityCoverage.length} provider`}>
+        <Panel title="7. Capability coverage" hint={`${data.capabilityCoverage.length} provider`}>
           {data.capabilityCoverage.map((row) => <Row key={row.provider} label={row.provider} value={`score ${row.score ?? "—"}`} />)}
         </Panel>
 
-        <Panel title="7. Budget confidence" hint={data.budgetConfidence.confidence}>
+        <Panel title="8. Budget confidence" hint={data.budgetConfidence.confidence}>
           <Row label="Spend hari ini" value={usd(data.budgetConfidence.pacing.spendToday)} />
           <Row label="Projected" value={`${usd(data.budgetConfidence.projectedLow)}–${usd(data.budgetConfidence.projectedHigh)}`} />
           <Row label="Budget" value={data.budgetConfidence.pacing.budget ? usd(data.budgetConfidence.pacing.budget) : "belum diset"} />
           <Row label="Status" value={data.budgetConfidence.pacing.status} tone={data.budgetConfidence.pacing.status === "ok" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"} />
         </Panel>
 
-        <Panel title="8. Cost allocation" hint="per key">
-          {data.costAllocation.length === 0 ? <p className="text-xs text-text-muted">Belum ada usage per key.</p> : data.costAllocation.map((row) => <Row key={row.name} label={row.name} value={`${usd(row.cost)} · ${fmt(row.requests)} req`} />)}
+        <Panel title="9. Cost allocation" hint="label bebas">
+          {data.costAllocation.length === 0 ? <p className="text-xs text-text-muted">Belum ada usage per key.</p> : data.costAllocation.map((row) => (
+            <div key={row.name} className="border-t border-border/50 py-1.5">
+              <div className="flex items-center justify-between gap-2 text-[10px]"><span className="truncate text-text-muted" title={row.name}>{row.name}</span><span className="shrink-0 text-text-main">{usd(row.cost)} · {fmt(row.requests)} req</span></div>
+              <div className="mt-1 flex gap-1">
+                <input value={costLabels[row.name] || ""} onChange={(event) => setCostLabels((current) => ({ ...current, [row.name]: event.target.value }))} maxLength={40} placeholder="Label proyek/tim" aria-label={`Label biaya ${row.name}`} className="h-7 min-w-0 flex-1 rounded border border-border bg-surface px-2 text-[10px] text-text-main" />
+                <button type="button" onClick={() => saveCostLabel(row.name)} className="rounded border border-border px-2 text-[9px] text-primary">Simpan</button>
+              </div>
+            </div>
+          ))}
         </Panel>
 
-        <Panel title="9. Alert webhook" hint={data.webhook.configured ? "configured" : "not configured"}>
+        <Panel title="10. Alert webhook" hint={data.webhook.configured ? "configured" : "not configured"}>
           <Row label="Status" value={data.webhook.configured ? "aktif" : "belum diset"} tone={data.webhook.configured ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"} />
           <Row label="Host" value={data.webhook.urlHost || "—"} />
           <p className="text-[10px] text-text-muted">Set `alertWebhookUrl` di Settings untuk mengaktifkan.</p>
@@ -122,11 +169,25 @@ export default function GovernancePage() {
           {webhookResult ? <p className="text-[10px] text-text-muted">{webhookResult.ok ? `HTTP ${webhookResult.status}` : webhookResult.error}</p> : null}
         </Panel>
 
-        <Panel title="10. Performance & storage" hint="snapshot">
+        <Panel title="11. Performance & storage" hint="snapshot">
           <Row label="DB size" value={bytes(data.performance.dbBytes)} />
           <Row label="Usage rows" value={fmt(data.performance.usageRows)} />
           <Row label="Quota rows" value={fmt(data.performance.quotaRows)} />
           <Row label="Timeline buckets" value={fmt(data.performance.timelineBuckets)} />
+        </Panel>
+
+        <Panel title="12. Live probe (manual)" hint="1 request">
+          <p className="text-[10px] text-text-muted">Membuat API key sementara, mengirim satu request kecil, lalu menghapusnya. Tidak dijadwalkan otomatis karena provider dapat menagih request.</p>
+          <div className="flex gap-1">
+            <input value={probeModel} onChange={(event) => setProbeModel(event.target.value)} maxLength={120} aria-label="Model untuk live probe" placeholder="cbcn/deepseek-v4.1-flash" className="h-8 min-w-0 flex-1 rounded border border-border bg-surface px-2 text-[10px] text-text-main" />
+            <Button variant="secondary" size="sm" onClick={runProbe} disabled={probeBusy || !probeModel.trim()}>{probeBusy ? "Probe…" : "Probe"}</Button>
+          </div>
+          {probeResult ? (
+            <div className={`rounded-md border p-2 text-[10px] ${probeResult.ok ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-danger/30 bg-danger/10 text-danger"}`}>
+              <div className="font-semibold">HTTP {probeResult.status ?? "—"} · {probeResult.latencyMs ?? "—"}ms</div>
+              <div className="mt-0.5 break-words">{probeResult.ok ? `usage ${probeResult.usage?.total_tokens ?? "—"} token` : probeResult.error || "gagal"}</div>
+            </div>
+          ) : null}
         </Panel>
       </div>
     </div>

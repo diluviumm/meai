@@ -391,6 +391,22 @@ export async function getInsights({ hours = WINDOW_HOURS, apiKey = null } = {}) 
   const catalog = readStatusFile("catalog-diff.json");
   if (catalog && (catalog.added?.length || catalog.removed?.length)) notifications.push({ level: "info", text: `Catalog +${catalog.added?.length || 0}/−${catalog.removed?.length || 0}` });
 
+  const cacheTtlAdvisor = leaderboard
+    .filter((row) => row.requests >= 10)
+    .map((row) => {
+      const rate = row.cacheHitRate;
+      const recommendation = rate == null
+        ? "Belum ada token prompt untuk dinilai"
+        : rate < 0.2
+          ? "Naikkan cache TTL / stabilkan prefix prompt"
+          : rate < 0.5
+            ? "Evaluasi urutan pesan; pertahankan prefix yang sama"
+            : "Pertahankan TTL saat ini";
+      return { model: row.model, requests: row.requests, cacheHitRate: rate, recommendation };
+    })
+    .sort((a, b) => (a.cacheHitRate ?? 1) - (b.cacheHitRate ?? 1))
+    .slice(0, 8);
+
   const quotaStats = db.get(
     `SELECT COUNT(*) AS rows, MIN(sampledAt) AS oldest, MAX(sampledAt) AS newest FROM quotaHistory`,
   ) || {};
@@ -421,6 +437,7 @@ export async function getInsights({ hours = WINDOW_HOURS, apiKey = null } = {}) 
     timeline: timelineRows,
     weekdayForecast,
     cacheHygiene,
+    cacheTtlAdvisor,
     latencyHeatmap,
     providerTimeline,
     sloIncidents: sloIncidentSummary,
