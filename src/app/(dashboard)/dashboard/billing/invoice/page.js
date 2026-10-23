@@ -12,13 +12,29 @@ export default function InvoicePage() {
   const [period, setPeriod] = useState("30d");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [rate, setRate] = useState("16000");
+  const [tax, setTax] = useState("0");
+  const [settingMsg, setSettingMsg] = useState("");
 
   useEffect(() => {
     fetch(`/api/billing/invoice?period=${period}&format=json`, { cache: "no-store" })
       .then((response) => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
-      .then((payload) => { setError(""); setData(payload); })
+      .then((payload) => { setError(""); setData(payload); setRate(String(payload.rate)); setTax(String(payload.taxPct)); })
       .catch((err) => setError(err.message));
   }, [period]);
+
+  const saveInvoiceSettings = async () => {
+    const response = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usdToIdr: Number(rate), invoiceTaxPct: Number(tax) }),
+    });
+    setSettingMsg(response.ok ? "Pengaturan invoice disimpan." : `Gagal menyimpan (HTTP ${response.status}).`);
+    if (response.ok) {
+      const payload = await fetch(`/api/billing/invoice?period=${period}&format=json`, { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+      if (payload) { setData(payload); setRate(String(payload.rate)); setTax(String(payload.taxPct)); }
+    }
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-3 sm:p-4">
@@ -71,6 +87,22 @@ export default function InvoicePage() {
                 </tbody>
               </table>
             </div>
+          </Card>
+
+          <Card className="p-4">
+            <details>
+              <summary className="cursor-pointer text-xs font-semibold text-text-main">Pengaturan invoice (kurs &amp; PPN)</summary>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <label className="flex flex-col gap-1 text-[10px] text-text-muted">1 USD → IDR
+                  <input type="number" min="1" step="1" value={rate} onChange={(event) => setRate(event.target.value)} className="h-9 rounded-md border border-border bg-surface px-2 text-xs text-text-main" />
+                </label>
+                <label className="flex flex-col gap-1 text-[10px] text-text-muted">PPN (%)
+                  <input type="number" min="0" max="100" step="1" value={tax} onChange={(event) => setTax(event.target.value)} className="h-9 rounded-md border border-border bg-surface px-2 text-xs text-text-main" />
+                </label>
+                <div className="flex items-end"><Button variant="secondary" size="sm" onClick={saveInvoiceSettings}>Simpan pengaturan</Button></div>
+              </div>
+              {settingMsg ? <p className="mt-2 text-[10px] text-text-muted">{settingMsg}</p> : null}
+            </details>
           </Card>
 
           <Card className="p-4 text-[11px] text-text-muted">

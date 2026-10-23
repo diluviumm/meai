@@ -24,7 +24,17 @@ export async function GET(request) {
     const [stats, settings] = await Promise.all([getUsageStats(period), getSettings()]);
     const rate = Number(settings.usdToIdr) > 0 ? Number(settings.usdToIdr) : 16000;
     const taxPct = Math.max(0, Math.min(100, Number(settings.invoiceTaxPct) || 0));
-    const rows = Object.values(stats.byApiKey || {}).sort((a, b) => b.cost - a.cost).slice(0, 18);
+    const keyRows = new Map();
+    for (const row of Object.values(stats.byApiKey || {})) {
+      const keyName = row.keyName || row.apiKeyMasked || "Tanpa label";
+      const current = keyRows.get(keyName) || { keyName, requests: 0, promptTokens: 0, completionTokens: 0, cost: 0 };
+      current.requests += Number(row.requests) || 0;
+      current.promptTokens += Number(row.promptTokens) || 0;
+      current.completionTokens += Number(row.completionTokens) || 0;
+      current.cost += Number(row.cost) || 0;
+      keyRows.set(keyName, current);
+    }
+    const rows = [...keyRows.values()].sort((a, b) => b.cost - a.cost);
     const totalUsd = Number(stats.totalCost) || 0;
     const taxUsd = totalUsd * (taxPct / 100);
     const grandUsd = totalUsd + taxUsd;
