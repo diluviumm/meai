@@ -22,6 +22,7 @@ export default function GovernancePage() {
   const [notice, setNotice] = useState("");
   const [backupResult, setBackupResult] = useState(null);
   const [webhookResult, setWebhookResult] = useState(null);
+  const [pricingState, setPricingState] = useState(null);
 
   const load = () => fetch("/api/governance", { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }).then(setData).catch((err) => setError(err.message));
 
@@ -46,6 +47,13 @@ export default function GovernancePage() {
     const payload = await response.json().catch(() => ({}));
     setWebhookResult(payload);
     setNotice(payload.ok ? `Webhook OK (HTTP ${payload.status}).` : payload.error || "Webhook gagal.");
+  };
+
+  const snapshotPricing = async () => {
+    const response = await fetch("/api/governance/pricing-snapshot", { method: "POST" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) setNotice(payload.error || "Pricing snapshot gagal.");
+    else { setPricingState(payload.count); setNotice(`Pricing snapshot: ${payload.count} model.`); load(); }
   };
 
   if (error) return <div className="p-4"><Card className="border-danger/30 bg-danger/10 p-4 text-sm text-danger">Gagal memuat governance: {error}</Card></div>;
@@ -97,6 +105,8 @@ export default function GovernancePage() {
         <Panel title="7. Deprecation & pricing radar" hint="model">
           {data.deprecations ? <pre className="max-h-24 overflow-auto text-[10px] text-text-muted">{JSON.stringify(data.deprecations).slice(0, 500)}</pre> : <p className="text-xs text-text-muted">Belum ada file `~/.meai/model-deprecations.json`; radar belum memiliki data.</p>}
           {data.priceDiff ? <Row label="Pricing diff" value={`+${data.priceDiff.added?.length || 0} / −${data.priceDiff.removed?.length || 0} / Δ${data.priceDiff.changed?.length || 0}`} /> : <Row label="Pricing diff" value="belum ada snapshot" />}
+          <Button variant="ghost" size="xs" onClick={snapshotPricing}>Snapshot pricing</Button>
+          {pricingState ? <p className="text-[10px] text-text-muted">{pricingState} model tersimpan.</p> : null}
         </Panel>
 
         <Panel title="8. Capability coverage" hint={`${data.capabilityCoverage.length} provider`}>
