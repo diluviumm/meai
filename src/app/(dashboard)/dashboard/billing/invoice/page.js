@@ -33,7 +33,7 @@ export default function InvoicePage() {
             <option value="7d">7 hari</option>
             <option value="30d">30 hari</option>
           </select>
-          <a href={`/api/billing/invoice?period=${period}`} className="rounded-full border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">Download PDF</a>
+          <a href={`/api/billing/invoice?period=${period}`} className="inline-flex min-h-11 items-center rounded-full border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary">Download PDF</a>
         </div>
       </div>
 
@@ -75,7 +75,7 @@ export default function InvoicePage() {
 
           <Card className="p-4 text-[11px] text-text-muted">
             <p><strong className="text-text-main">Catatan:</strong> rekap dihitung dari usageHistory dan pricing MeAI. PPN mengikuti setting <code>invoiceTaxPct</code> (default 0%). Dokumen ini bukan faktur pajak resmi.</p>
-            <p className="mt-1">Label biaya diatur di <a href="/dashboard/governance" className="text-primary hover:underline">Governance → Cost allocation</a>. Kurs diatur lewat setting <code>usdToIdr</code>.</p>
+            <p className="mt-1">Label biaya diatur di <a href="/dashboard/governance" className="inline-flex min-h-11 items-center text-primary hover:underline">Governance → Cost allocation</a>. Kurs diatur lewat setting <code>usdToIdr</code>.</p>
           </Card>
 
           <div>

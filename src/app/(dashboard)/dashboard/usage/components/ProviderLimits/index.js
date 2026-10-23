@@ -1292,14 +1292,14 @@ export default function ProviderLimits() {
         )}
         <Link
           href="/dashboard/quota/history"
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-muted transition-colors hover:border-primary/30 hover:text-primary"
+          className="inline-flex min-h-11 items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-text-muted transition-colors hover:border-primary/30 hover:text-primary"
         >
           <span className="material-symbols-outlined text-[14px]">history</span>
           Riwayat
         </Link>
         <Link
           href="/dashboard/guide#quota"
-          className="ml-auto inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15"
+          className="ml-auto inline-flex min-h-11 items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15"
         >
           <span className="material-symbols-outlined text-[14px]">menu_book</span>
           Cara baca quota
@@ -1622,7 +1622,7 @@ export default function ProviderLimits() {
                           href={conn.provider === "codebuddy-cn" ? "https://copilot.tencent.com" : "https://www.codebuddy.ai"}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="font-semibold underline underline-offset-2 hover:text-text-primary"
+                          className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2 hover:text-text-primary"
                         >
                           Buka situs CodeBuddy
                         </a>
@@ -1638,7 +1638,7 @@ export default function ProviderLimits() {
                       href={conn.provider === "codebuddy-cn" ? "https://copilot.tencent.com" : "https://www.codebuddy.ai"}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-semibold underline underline-offset-2 hover:text-text-primary"
+                      className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2 hover:text-text-primary"
                     >
                       Buka situs CodeBuddy
                     </a>

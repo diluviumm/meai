@@ -243,11 +243,13 @@ const FEATURES = [
     icon: "policy",
     title: "Governance & Safety",
     summary:
-      "10 pemeriksaan: self-check, backup inventory, config drift, combo inventory, deprecation radar, capability coverage, budget confidence, cost allocation, webhook readiness, performance.",
+      "12 pemeriksaan: self-check, backup, config drift, combo, catalog diff, radar, capability, budget confidence, cost labels, webhook, performance, live probe.",
     steps: [
       "Buka Governance & Safety dari sidebar.",
       "Klik Snapshot config untuk membuat baseline drift.",
-      "Pantau panel 3 (drift), 7 (budget confidence), dan 9 (webhook).",
+      "Pantau panel 3 (drift), 5 (catalog), 8 (budget confidence), dan 10 (webhook).",
+      "Isi label proyek/tim di Cost allocation, lalu Simpan.",
+      "Live probe bersifat manual: satu request kecil, API key sementara, lalu dihapus.",
       "Backup inventory menampilkan file SQLite terbaru di ~/.meai/db.",
       "Perbaiki item berwarna amber/merah sebelum mengubah routing.",
     ],
@@ -452,7 +454,7 @@ function GuideCard({ feature, index }) {
 
       <Link
         href={feature.href}
-        className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary transition-transform group-hover:translate-x-0.5"
+        className="inline-flex min-h-11 items-center gap-1 text-[11px] font-semibold text-primary transition-transform group-hover:translate-x-0.5"
       >
         Buka halaman
         <span className="material-symbols-outlined text-[14px]">arrow_forward</span>

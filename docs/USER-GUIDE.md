@@ -285,33 +285,57 @@ alih-alih mengosongkan kartu.
 
 ### 7.11 Governance & Safety
 
-Buka `/dashboard/governance` untuk 10 pemeriksaan operasional:
+Buka `/dashboard/governance` untuk 12 pemeriksaan operasional:
 
 1. **Fork self-check** — versi, API/DB, jumlah usage/quota/connection.
 2. **Backup inventory** — file `data*.sqlite`/`.bak` di `~/.meai/db` beserta ukuran.
 3. **Config drift** — bandingkan settings aktif dengan snapshot; tombol **Snapshot config** membuat baseline.
 4. **Combo inventory** — jumlah combo dan waktu update terakhir.
-5. **Deprecation radar** — membaca `~/.meai/model-deprecations.json` bila tersedia.
-6. **Capability coverage** — score per provider dari Insights.
-7. **Budget confidence** — proyeksi rendah/tinggi dari variance biaya per jam.
-8. **Cost allocation** — biaya dan request per API key.
-9. **Webhook readiness** — status `alertWebhookUrl` dan host-nya.
-10. **Performance & storage** — ukuran DB, jumlah usage/quota, bucket timeline.
+5. **Catalog changes** — model ditambah/dihapus dari snapshot watcher harian.
+6. **Deprecation radar** — membaca `~/.meai/model-deprecations.json` bila tersedia.
+7. **Capability coverage** — score per provider dari Insights.
+8. **Budget confidence** — proyeksi rendah/tinggi dari variance biaya per jam.
+9. **Cost allocation** — biaya/request per API key + label proyek atau tim bebas.
+10. **Webhook readiness** — status `alertWebhookUrl` dan host-nya.
+11. **Performance & storage** — ukuran DB, jumlah usage/quota, bucket timeline.
+12. **Live probe (manual)** — satu request kecil memakai API key sementara yang langsung dihapus; tidak dijadwalkan otomatis.
 
 Snapshot config tidak mengubah settings; ia hanya menulis `~/.meai/settings-snapshot.json` sebagai baseline drift.
 
-### 7.12 Phase 1 analytics (live)
+### 7.12 Invoice & biaya (Indonesia)
 
-- **3D Orbital Health** — Canvas 3D projection; orb size = request, color = health score; animasi menghormati `prefers-reduced-motion`.
+Buka `/dashboard/billing/invoice`:
+
+- Pilih periode **Hari ini / 7 hari / 30 hari**.
+- Nilai utama memakai **IDR** dengan kurs `usdToIdr` (default 16.000); USD tetap ditampilkan sebagai referensi.
+- `invoiceTaxPct` default **0%**; dokumen berlabel **bukan faktur pajak resmi**.
+- **Download PDF** menghasilkan PDF A4 berisi nomor, tanggal WITA, rincian per API key, total, dan catatan.
+- Label biaya diatur di **Governance → Cost allocation**; label yang sama dipakai di PDF.
+- `GET /api/billing/invoice?period=30d&format=json` untuk data mentah; tanpa `format=json` mengembalikan PDF.
+
+### 7.13 Phase 1 analytics (live)
+
+- **3D Orbital Health** — Three.js WebGL, fallback Canvas 2D bila WebGL tidak tersedia; orb size = request, color = health score; animasi menghormati `prefers-reduced-motion`.
 - **Weekday cost forecast** — rata-rata biaya per hari dari usage 28 hari.
 - **Prompt-cache hygiene** — cache rate per model; peringatan bila <20%.
 - **Latency heatmap per model · connection** — p95 dan jumlah request per jam.
 - **SLO incident timeline** — jam mulai/selesai, durasi, p95 maksimum.
-- **Timeout advisor** — rekomendasi `p95 × 1.5`, clamp 15–120 detik.
 - **Settings audit** — perubahan setting dicatat di `~/.meai/settings-audit.jsonl`; nilai sensitif di-redact.
 - **Backup restore-point check** — tombol `check` memeriksa integrity dan jumlah tabel backup.
 - **OpenAPI contract** — spec bersama `src/lib/openapiSpec.js`, diuji oleh `openapi-contract.test.js`.
 - **Webhook test** — hanya HTTPS; tombol Test webhook aktif bila `alertWebhookUrl` diset.
+- **Cache TTL advisor** — rekomendasi per model berdasarkan cache hit rate.
+- **Touch-target audit** — `~/.hermes/tests/meai/touch-audit.sh` memeriksa kontrol <44px pada viewport 390px.
+
+### 7.14 Otomasi operasional
+
+| Timer | Fungsi |
+|---|---|
+| `meai-a11y-gate.timer` | WCAG 16 halaman; gagal bila ada violation |
+| `meai-log-rotate.timer` | Rotasi log >50 MB, retensi 14 hari |
+| `meai-cron-drift.timer` | Cek semua timer `meai-*` aktif |
+| `meai-quota-alert.timer` | Webhook kuota ≥95% atau proyeksi habis ≤3 hari |
+| `meai-pricing-snapshot.timer` | Snapshot harga harian |
 
 ---
 

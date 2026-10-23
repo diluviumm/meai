@@ -263,7 +263,7 @@ export default function InsightsPage() {
           <button type="button" onClick={exportCsv} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Export CSV</button>
           <button type="button" onClick={shareInsights} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Share 60m</button>
           <button type="button" onClick={saveCurrentView} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] text-text-muted hover:text-primary">Simpan view</button>
-          <a href="/api/openapi" target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-primary hover:underline">OpenAPI</a>
+          <a href="/api/openapi" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-[11px] font-semibold text-primary hover:underline">OpenAPI</a>
         </div>
       </div>
 
