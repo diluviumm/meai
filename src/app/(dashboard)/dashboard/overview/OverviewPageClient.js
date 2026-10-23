@@ -386,7 +386,7 @@ export default function OverviewPageClient() {
                   setRangeErr("");
                 }}
                 className={`px-3 py-1.5 font-medium transition-colors ${
-                  period === p.value ? "bg-brand-500 text-white" : "text-text-muted hover:bg-surface-2"
+                  period === p.value ? "bg-brand-500 text-[#171232]" : "text-text-muted hover:bg-surface-2"
                 }`}
               >
                 {p.label}
@@ -416,7 +416,7 @@ export default function OverviewPageClient() {
                 }
               }}
               className={`px-3 py-1.5 font-medium transition-colors ${
-                period === "custom" ? "bg-brand-500 text-white" : "text-text-muted hover:bg-surface-2"
+                period === "custom" ? "bg-brand-500 text-[#171232]" : "text-text-muted hover:bg-surface-2"
               }`}
             >
               Custom
