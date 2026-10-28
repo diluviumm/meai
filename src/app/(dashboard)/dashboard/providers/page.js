@@ -288,6 +288,22 @@ export default function ProvidersPage() {
       (p) => matchSearch(p.name) && matchStatus(getProviderStats(p.id, "apikey")),
     );
 
+  // Custom embedding nodes are exposed here too. They are not OpenAI chat
+  // providers, so they must not be merged into the chat cards; keep a distinct
+  // visual group and let the detail page render embedding-kind models.
+  const customEmbeddingProviders = providerNodes
+    .filter((node) => node.type === "custom-embedding")
+    .map((node) => ({
+      id: node.id,
+      name: node.name || "Custom Embedding",
+      color: "#7C3AED",
+      textIcon: "EM",
+      apiType: "embedding",
+    }))
+    .filter(
+      (p) => matchSearch(p.name) && matchStatus(getProviderStats(p.id, "apikey")),
+    );
+
   // Dual-auth providers (oauth + apikey) store API keys as authType "apikey"
   // (and sometimes "api_key"). Card stats must count both so totals match detail.
   // kiro has no authModes in registry but accepts both (headless uses "api_key").
@@ -382,7 +398,8 @@ export default function ProvidersPage() {
     freeTierEntries.length > 0 ||
     apikeyEntries.length > 0 ||
     compatibleProviders.length > 0 ||
-    anthropicCompatibleProviders.length > 0;
+    anthropicCompatibleProviders.length > 0 ||
+    customEmbeddingProviders.length > 0;
 
   return (
     <div className="flex min-w-0 flex-col gap-6 px-1 sm:px-0">
@@ -466,6 +483,29 @@ export default function ProvidersPage() {
           </div>
         )}
       </div>
+
+      {/* Custom Embedding Providers — visible but separate from chat providers */}
+      {customEmbeddingProviders.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
+            Custom Embedding Providers
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+            {customEmbeddingProviders.map((info) => (
+              <ApiKeyProviderCard
+                key={info.id}
+                providerId={info.id}
+                provider={info}
+                stats={getProviderStats(info.id, "apikey")}
+                authType="compatible"
+                onToggle={(active) =>
+                  handleToggleProvider(info.id, "apikey", active)
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* OAuth Providers */}
       {oauthEntries.length > 0 && (

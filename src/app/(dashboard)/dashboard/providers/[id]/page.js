@@ -15,6 +15,7 @@ import { translate } from "@/i18n/runtime";
 import { fetchSuggestedModels } from "@/shared/utils/providerModelsFetcher";
 import { getProviderCustomModelRows } from "@/shared/utils/providerCustomModels";
 import ModelRow from "./ModelRow";
+import ModelsCard from "../components/ModelsCard";
 import PassthroughModelsSection from "./PassthroughModelsSection";
 import CompatibleModelsSection from "./CompatibleModelsSection";
 import ConnectionRow from "./ConnectionRow";
@@ -195,9 +196,9 @@ export default function ProviderDetailPage() {
   const providerInfo = providerNode
     ? {
         id: providerNode.id,
-        name: providerNode.name || (providerNode.type === "anthropic-compatible" ? "Anthropic Compatible" : "OpenAI Compatible"),
-        color: providerNode.type === "anthropic-compatible" ? "#D97757" : "#10A37F",
-        textIcon: providerNode.type === "anthropic-compatible" ? "AC" : "OC",
+        name: providerNode.name || (providerNode.type === "anthropic-compatible" ? "Anthropic Compatible" : providerNode.type === "custom-embedding" ? "Custom Embedding" : "OpenAI Compatible"),
+        color: providerNode.type === "anthropic-compatible" ? "#D97757" : providerNode.type === "custom-embedding" ? "#7C3AED" : "#10A37F",
+        textIcon: providerNode.type === "anthropic-compatible" ? "AC" : providerNode.type === "custom-embedding" ? "EM" : "OC",
         apiType: providerNode.apiType,
         baseUrl: providerNode.baseUrl,
         type: providerNode.type,
@@ -205,7 +206,8 @@ export default function ProviderDetailPage() {
     : (OAUTH_PROVIDERS[providerId] || APIKEY_PROVIDERS[providerId] || FREE_PROVIDERS[providerId] || FREE_TIER_PROVIDERS[providerId] || WEB_COOKIE_PROVIDERS[providerId]);
   const authModes = providerInfo?.authModes || [];
   const isOAuth = !!OAUTH_PROVIDERS[providerId] || !!FREE_PROVIDERS[providerId] || authModes.includes("oauth");
-  const supportsApiKeyAuth = !!APIKEY_PROVIDERS[providerId] || authModes.includes("apikey");
+  const isCustomEmbedding = providerNode?.type === "custom-embedding";
+  const supportsApiKeyAuth = !!APIKEY_PROVIDERS[providerId] || authModes.includes("apikey") || isCustomEmbedding;
   const isFreeNoAuth = !!FREE_PROVIDERS[providerId]?.noAuth;
   const staticModels = getModelsByProviderId(providerId);
   const models = (providerId === "cursor" || providerId === "zed") && liveModels.length > 0
@@ -233,7 +235,7 @@ export default function ProviderDetailPage() {
     const levels = getThinkingLevels(providerId, modelId);
     return levels && levels.includes(thinkingMode) ? thinkingMode : null;
   };
-  const providerStorageAlias = isCompatible ? providerId : providerAlias;
+  const providerStorageAlias = (isCompatible || isCustomEmbedding) ? (providerNode?.prefix || providerId) : providerAlias;
   // Union of levels across this provider's reasoning models — drives the level picker options.
   // Include custom models too (e.g. manually added gpt-5.6-sol → max).
   const providerThinkingLevels = (() => {
@@ -262,7 +264,7 @@ export default function ProviderDetailPage() {
       ? thinkingTotalCount
       : models.filter((m) => resolveThinkingSuffix(m.id)).length +
         kiloFreeModels.filter((m) => resolveThinkingSuffix(m.id)).length;
-  const providerDisplayAlias = isCompatible
+  const providerDisplayAlias = (isCompatible || isCustomEmbedding)
     ? (providerNode?.prefix || providerId)
     : providerAlias;
 
@@ -1216,6 +1218,15 @@ export default function ProviderDetailPage() {
   };
 
   const renderModelsSection = () => {
+    if (isCustomEmbedding) {
+      return (
+        <ModelsCard
+          providerId={providerId}
+          kindFilter="embedding"
+          providerAliasOverride={providerNode?.prefix || providerId}
+        />
+      );
+    }
     if (isCompatible) {
       return (
         <CompatibleModelsSection
