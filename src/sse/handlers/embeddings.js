@@ -5,7 +5,7 @@ import {
   extractApiKey,
   isValidApiKey,
 } from "../services/auth.js";
-import { getSettings } from "@/lib/localDb";
+import { getSettings, getComboByName } from "@/lib/localDb";
 import { getModelInfo } from "../services/model.js";
 import { handleEmbeddingsCore } from "open-sse/handlers/embeddingsCore.js";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
@@ -73,6 +73,32 @@ export async function handleEmbeddings(request) {
   if (!body.input) {
     log.warn("EMBEDDINGS", "Missing input");
     return errorResponse(HTTP_STATUS.BAD_REQUEST, "Missing required field: input");
+  }
+
+  // Embedding combos are resolved here, not by the chat combo expander.
+  // A combo is a fallback chain: the first successful embedding provider wins.
+  const combo = await getComboByName(modelStr);
+  if (combo?.kind === "embedding") {
+    const candidates = (combo.models || []).filter((candidate) => typeof candidate === "string" && candidate.includes("/") && candidate !== modelStr);
+    if (candidates.length === 0) {
+      return errorResponse(HTTP_STATUS.BAD_REQUEST, `Embedding combo '${modelStr}' has no models`);
+    }
+
+    let lastResponse = null;
+    for (const candidate of candidates) {
+      const retryHeaders = new Headers(request.headers);
+      retryHeaders.delete("content-length");
+      const retryRequest = new Request(request.url, {
+        method: "POST",
+        headers: retryHeaders,
+        body: JSON.stringify({ ...body, model: candidate }),
+      });
+      const retryResponse = await handleEmbeddings(retryRequest);
+      if (retryResponse.ok) return retryResponse;
+      lastResponse = retryResponse;
+      log.warn("EMBEDDINGS", `Combo '${modelStr}' candidate failed`, { candidate });
+    }
+    return lastResponse || errorResponse(HTTP_STATUS.SERVICE_UNAVAILABLE, `All models in embedding combo '${modelStr}' failed`);
   }
 
   const modelInfo = await getModelInfo(modelStr);

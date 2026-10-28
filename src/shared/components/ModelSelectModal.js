@@ -121,7 +121,10 @@ export default function ModelSelectModal({
     return activeOnly.filter((p) => {
       const info = AI_PROVIDERS[p.provider];
       const kinds = info?.serviceKinds || ["llm"];
-      return kinds.includes(kindFilter);
+      if (kinds.includes(kindFilter)) return true;
+      // Custom embedding nodes are database-backed, so they do not exist in
+      // AI_PROVIDERS. Keep them selectable for the embedding kind selector.
+      return kindFilter === "embedding" && String(p.provider).startsWith("custom-embedding-");
     });
   }, [effectiveConnections, kindFilter]);
 
@@ -311,6 +314,7 @@ export default function ModelSelectModal({
       const alias = getProviderAlias(providerId);
       const providerInfo = allProviders[providerId] || { name: providerId, color: "#666" };
       const isCustomProvider = isOpenAICompatibleProvider(providerId) || isAnthropicCompatibleProvider(providerId);
+      const isCustomEmbeddingProvider = String(providerId).startsWith("custom-embedding-");
 
       // For provider-as-model kinds (webSearch/webFetch): emit a single entry where value === providerId
       if (kindFilter && PROVIDER_AS_MODEL_KINDS.has(kindFilter)) {
@@ -378,6 +382,33 @@ export default function ModelSelectModal({
             alias: alias,
             color: providerInfo.color,
             models: combined,
+          };
+        }
+      } else if (isCustomEmbeddingProvider) {
+        // Custom embedding nodes are connected through a database-backed
+        // provider id (custom-embedding-<uuid>). Their custom models use the
+        // node prefix (for example knremb), not the node id.
+        if (kindFilter && kindFilter !== "embedding") return;
+        const connection = filteredActiveProviders.find(p => p.provider === providerId) || effectiveConnections.find(p => p.provider === providerId);
+        const matchedNode = providerNodes.find(node => node.id === providerId);
+        const nodePrefix = matchedNode?.prefix || connection?.providerSpecificData?.prefix || providerId;
+        const embeddingModels = customModels
+          .filter((m) => (m.providerAlias === nodePrefix || m.providerAlias === providerId) && getModelKind(m) === "embedding")
+          .map((m) => ({
+            id: m.id,
+            name: m.name || m.id,
+            value: `${nodePrefix}/${m.id}`,
+            kind: "embedding",
+            isCustom: true,
+          }));
+        if (embeddingModels.length > 0) {
+          groups[providerId] = {
+            name: matchedNode?.name || connection?.name || providerInfo.name,
+            alias: nodePrefix,
+            color: "#7C3AED",
+            models: embeddingModels,
+            isCustom: true,
+            hasModels: true,
           };
         }
       } else if (isCustomProvider) {
@@ -454,7 +485,7 @@ export default function ModelSelectModal({
         const customAliasIds = new Set(customAliasModels.map((m) => m.id));
         const customRegisteredModels = customModels
           .filter((m) => m.providerAlias === alias && !hardcodedIds.has(m.id) && !customAliasIds.has(m.id))
-          .map((m) => ({ id: m.id, name: m.name || m.id, value: `${alias}/${m.id}`, isCustom: true }));
+          .map((m) => ({ id: m.id, name: m.name || m.id, value: `${alias}/${m.id}`, isCustom: true, kind: getModelKind(m) }));
 
         const merged = [
           ...hardcodedModels.map((m) => ({ id: m.id, name: m.name, value: `${alias}/${m.id}`, kind: getModelKind(m) })),

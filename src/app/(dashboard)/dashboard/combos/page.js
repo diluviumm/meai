@@ -179,7 +179,7 @@ export default function CombosPage() {
       const settingsData = settingsRes.ok ? await settingsRes.json() : {};
 
       // Only LLM combos here - webSearch/webFetch combos belong to media-providers/web
-      if (combosRes.ok) setCombos((combosData.combos || []).filter(c => !c.kind || c.kind === "llm"));
+      if (combosRes.ok) setCombos((combosData.combos || []).filter(c => !c.kind || c.kind === "llm" || c.kind === "embedding"));
       if (providersRes.ok) {
         setActiveProviders((providersData.connections || []).filter((c) => c.isActive !== false));
       }
@@ -646,7 +646,14 @@ function ComboCard({ combo, getCaps, comboByName = {}, activeProviders = [], cop
             <span className="material-symbols-outlined text-primary text-[18px]">layers</span>
           </div>
           <div className="min-w-0 flex-1">
-            <code className="block truncate font-mono text-sm font-medium">{combo.name}</code>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <code className="block truncate font-mono text-sm font-medium">{combo.name}</code>
+              {combo.kind === "embedding" && (
+                <span className="shrink-0 rounded bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-300">
+                  Embedding
+                </span>
+              )}
+            </div>
             <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
               {combo.models.length === 0 ? (
                 <span className="text-xs text-text-muted italic">No models</span>
@@ -1065,6 +1072,7 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
   // Initialize state with combo values - key prop on parent handles reset on remount
   const [name, setName] = useState(combo?.name || "");
   const [models, setModels] = useState(combo?.models || []);
+  const [kind, setKind] = useState(combo?.kind || kindFilter || "llm");
   const [showModelSelect, setShowModelSelect] = useState(false);
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState("");
@@ -1155,7 +1163,7 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
   const handleSave = async () => {
     if (!validateName(name)) return;
     setSaving(true);
-    await onSave({ name: name.trim(), models });
+    await onSave({ name: name.trim(), models, kind });
     setSaving(false);
   };
 
@@ -1180,6 +1188,25 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
             />
             <p className="text-[10px] text-text-muted mt-0.5">
               Only letters, numbers, -, _ and . allowed
+            </p>
+          </div>
+
+          <div>
+            <Select
+              label="Combo Type"
+              options={[
+                { value: "llm", label: "LLM — chat completions" },
+                { value: "embedding", label: "Embedding — /v1/embeddings" },
+              ]}
+              value={kind}
+              onChange={(e) => {
+                setKind(e.target.value);
+                setModels([]);
+              }}
+              selectClassName="py-1.5 text-sm"
+            />
+            <p className="text-[10px] text-text-muted mt-0.5">
+              Embedding combos use the same name at POST /v1/embeddings; the model picker is filtered to embedding models.
             </p>
           </div>
 
@@ -1264,7 +1291,7 @@ function ComboFormModal({ isOpen, combo, onClose, onSave, activeProviders, kindF
           activeProviders={activeProviders}
           modelAliases={modelAliases}
           title="Add Model to Combo"
-          kindFilter={kindFilter}
+          kindFilter={kind === "embedding" ? "embedding" : null}
           addedModelValues={models}
           closeOnSelect={false}
         />
