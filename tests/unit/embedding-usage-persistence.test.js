@@ -16,7 +16,13 @@ vi.mock("../../src/sse/services/auth.js", () => ({
   extractApiKey: () => "client-key",
   isValidApiKey: vi.fn(),
 }));
-vi.mock("@/lib/localDb", () => ({ getSettings: async () => ({ requireApiKey: false }) }));
+vi.mock("@/lib/localDb", () => ({
+  getSettings: async () => ({ requireApiKey: false }),
+  // 6fde72aa (28 Oct) made handleEmbeddings resolve embedding combos before
+  // dispatch; this suite exercises the plain (non-combo) path, so the lookup
+  // must exist and answer "no combo" — without it the module import throws.
+  getComboByName: async () => null,
+}));
 vi.mock("../../src/sse/services/model.js", () => ({
   getModelInfo: async () => ({ provider: "openai", model: "text-embedding-3-small" }),
 }));
