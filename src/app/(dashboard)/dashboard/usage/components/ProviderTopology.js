@@ -18,6 +18,17 @@ import { getProviderIconSrc, markProviderIconMissing } from "@/shared/utils/prov
 const FE_ACTIVE_TIMEOUT_MS = 60000;
 const FE_ACTIVE_TICK_MS = 1000;
 
+// WCAG AA (axe color-contrast, /dashboard/usage): a dark hue drawn on its own 8%
+// tint over the dark card lands under 4.5:1 (live: #6b7280 badge, 3.9:1).
+// Lighten only the dark hues; a bright hue already passes and keeps its identity.
+function badgeTextColor(hex) {
+  const m = /^#([0-9a-f]{6})$/i.exec(String(hex || ""));
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const lum = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+  return lum < 0.45 ? `color-mix(in srgb, ${hex} 60%, white)` : hex;
+}
+
 // Kame + electric particles along active edges
 const KAME_PARTICLE_COUNT = 6;
 const SPARK_COUNT = 5;
@@ -67,7 +78,7 @@ function ProviderNode({ data }) {
             }}
           />
         ) : (
-          <span className="text-sm font-bold" style={{ color }}>{textIcon}</span>
+          <span className="text-sm font-bold" style={{ color: badgeTextColor(color) }}>{textIcon}</span>
         )}
       </div>
 
