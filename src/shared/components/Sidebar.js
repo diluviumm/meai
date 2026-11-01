@@ -170,7 +170,7 @@ export default function Sidebar({ onClose }) {
             </button>
           )}
           {!forkBusy && forkCheck && forkCheck.behind > 0 && (
-            <button onClick={() => setShowForkModal(true)} title="Commit upstream baru tersedia — update langsung dari web" className="flex w-full cursor-pointer items-center gap-1.5 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1.5 text-left text-[11px] font-semibold text-amber-300 transition hover:bg-amber-400/15">
+            <button onClick={() => setShowForkModal(true)} title="Commit upstream baru tersedia — update langsung dari web" className="flex w-full cursor-pointer items-center gap-1.5 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1.5 text-left text-[11px] font-semibold text-warning transition hover:bg-amber-400/15">
               <span className="material-symbols-outlined text-[13px]">system_update_alt</span>
               <span className="flex-1">{forkCheck.behind} commit upstream</span>
               <span className="underline">Update</span>
