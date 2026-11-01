@@ -21,12 +21,15 @@ const FE_ACTIVE_TICK_MS = 1000;
 // WCAG AA (axe color-contrast, /dashboard/usage): a dark hue drawn on its own 8%
 // tint over the dark card lands under 4.5:1 (live: #6b7280 badge, 3.9:1).
 // Lighten only the dark hues; a bright hue already passes and keeps its identity.
+// Teks DI ATAS warna brand: pilih hitam atau putih berdasarkan luminansi brand,
+// bukan mencampur ke arah putih — mencampur ke putih merusak kontras di tema terang
+// (label jadi putih di atas latar putih). Ambang 0,55 memberi >=4,5:1 di kedua arah.
 function badgeTextColor(hex) {
   const m = /^#([0-9a-f]{6})$/i.exec(String(hex || ""));
   if (!m) return hex;
   const n = parseInt(m[1], 16);
   const lum = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
-  return lum < 0.45 ? `color-mix(in srgb, ${hex} 60%, white)` : hex;
+  return lum > 0.55 ? "#0a0a0a" : "#ffffff";
 }
 
 // Kame + electric particles along active edges
@@ -85,7 +88,7 @@ function ProviderNode({ data }) {
       {/* Provider name */}
       <span
         className="text-base font-medium truncate"
-        style={{ color: active ? badgeTextColor(color) : "var(--color-text)" }}
+        style={{ color: "var(--color-text)" }}
       >
         {label}
       </span>
