@@ -18,9 +18,9 @@ import { getProviderIconSrc, markProviderIconMissing } from "@/shared/utils/prov
 const FE_ACTIVE_TIMEOUT_MS = 60000;
 const FE_ACTIVE_TICK_MS = 1000;
 
-// WCAG AA (axe color-contrast, /dashboard/usage): a dark hue drawn on its own 8%
-// tint over the dark card lands under 4.5:1 (live: #6b7280 badge, 3.9:1).
-// Lighten only the dark hues; a bright hue already passes and keeps its identity.
+// WCAG AA (axe color-contrast): the icon badge tints its background with the brand
+// hue at 8% opacity, so the surface is effectively the card. Brand-tinted text fails
+// one of the two themes (white-on-white in light, <4.5:1 in dark) — use theme text.
 
 // Kame + electric particles along active edges
 const KAME_PARTICLE_COUNT = 6;
