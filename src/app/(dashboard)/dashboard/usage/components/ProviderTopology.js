@@ -85,7 +85,7 @@ function ProviderNode({ data }) {
       {/* Provider name */}
       <span
         className="text-base font-medium truncate"
-        style={{ color: active ? color : "var(--color-text)" }}
+        style={{ color: active ? badgeTextColor(color) : "var(--color-text)" }}
       >
         {label}
       </span>
